@@ -18,8 +18,9 @@
 
 1. Copy `.env.example` to `.env` and fill in your API keys.
 2. Start the stack with `docker compose up --build`.
-3. Open `http://localhost:8501` for the dashboard.
-4. Open `http://localhost:8000/docs` for the API docs.
+3. Open `http://localhost:8501` for the dashboard by default.
+4. Open `http://localhost:8000/docs` for the API docs by default.
+5. If your host already uses those ports, set `DASHBOARD_PORT` and `API_PORT` in `.env` before starting Compose.
 
 ## Apify Actor Notes
 
