@@ -16,6 +16,14 @@ services:
       - db
       - redis
 
+  scheduler:
+    build: ./backend
+    command: celery -A worker.celery_app.celery beat --loglevel=info
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+
   db:
     image: postgres:15
     environment:
@@ -38,6 +46,7 @@ services:
       - "8501:8501"
     depends_on:
       - backend
+      - scheduler
 
 volumes:
   postgres_data:

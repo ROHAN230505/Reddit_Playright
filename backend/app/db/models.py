@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -12,7 +12,10 @@ class Post(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     subreddit: Mapped[str] = mapped_column(String(255), index=True)
     title: Mapped[str] = mapped_column(String(500))
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
     url: Mapped[str] = mapped_column(String(1000), unique=True, index=True)
+    upvotes: Mapped[int] = mapped_column(Integer, default=0)
+    number_of_comments: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     comments: Mapped[list["Comment"]] = relationship(
@@ -29,6 +32,7 @@ class Comment(Base):
     comment_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     post_url: Mapped[str] = mapped_column(String(1000))
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    upvotes: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     post: Mapped["Post"] = relationship("Post", back_populates="comments")

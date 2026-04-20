@@ -34,9 +34,40 @@ class ReplyItem(BaseModel):
     comment_text: str
     comment_url: str | None
     comment_author: str | None
+    comment_upvotes: int
     post_id: int
     post_title: str
+    post_body: str | None
     post_url: str
+    post_upvotes: int
+    post_comment_count: int
     subreddit: str
 
     model_config = {"from_attributes": True}
+
+
+class ContentCommentItem(BaseModel):
+    id: int
+    text: str
+    author: str | None
+    comment_url: str | None
+    upvotes: int
+    created_at: datetime
+
+
+class ContentPostItem(BaseModel):
+    id: int
+    title: str
+    body: str | None
+    url: str
+    upvotes: int
+    number_of_comments: int
+    created_at: datetime
+    top_comments: list[ContentCommentItem]
+
+
+class SubredditContentResponse(BaseModel):
+    subreddit: str
+    post_count: int
+    comment_count: int
+    posts: list[ContentPostItem]

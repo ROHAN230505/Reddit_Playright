@@ -55,9 +55,14 @@ DEFAULT_TRACKED_SUBREDDITS = [
 def normalize_comment(raw: dict, fallback_post_url: str | None = None) -> dict:
     return {
         "text": raw.get("text", "") or raw.get("body", "") or "",
-        "comment_url": raw.get("url") or raw.get("commentUrl"),
-        "post_url": raw.get("postUrl") or derive_post_url(raw.get("url")) or fallback_post_url,
+        "comment_url": absolute_reddit_url(raw.get("permalink") or raw.get("url") or raw.get("commentUrl")),
+        "post_url": (
+            raw.get("postUrl")
+            or derive_post_url(raw.get("permalink") or raw.get("url"))
+            or fallback_post_url
+        ),
         "author": raw.get("author") or raw.get("username"),
+        "upvotes": raw.get("score") or raw.get("upVotes") or raw.get("upvotes") or 0,
         "created_at": _parse_datetime(raw.get("createdAt")),
     }
 
@@ -132,11 +137,11 @@ def process_subreddit(db: Session, subreddit: str, limit: int = 50) -> dict:
         if not post:
             continue
 
+        comment = save_comment(db, post.id, comment_payload)
         stats["comments"] += 1
         if not classify_ai_relevance(comment_payload["text"]):
             continue
 
-        comment = save_comment(db, post.id, comment_payload)
         include_promo = should_insert_promo()
         reply_text = generate_reply(comment.text, include_promo)
         reply = save_reply(
@@ -153,20 +158,41 @@ def process_subreddit(db: Session, subreddit: str, limit: int = 50) -> dict:
 
 
 def save_post(db: Session, subreddit: str, raw_post: dict) -> Post:
-    url = raw_post.get("url") or raw_post.get("postUrl")
+    url = absolute_reddit_url(raw_post.get("url") or raw_post.get("postUrl") or raw_post.get("permalink"))
     if not url:
         raise ValueError("Post is missing a URL.")
 
+    community_name = raw_post.get("subreddit") or raw_post.get("communityName") or f"r/{subreddit}"
+    normalized_subreddit = community_name.removeprefix("r/") if community_name else subreddit
     existing = db.scalar(select(Post).where(Post.url == url))
     if existing:
+        existing.subreddit = normalized_subreddit
+        existing.title = raw_post.get("title") or existing.title
+        existing.body = raw_post.get("selfText") or raw_post.get("body") or existing.body
+        existing.upvotes = raw_post.get("score") or raw_post.get("upVotes") or raw_post.get("upvotes") or existing.upvotes
+        existing.number_of_comments = (
+            raw_post.get("numComments")
+            or raw_post.get("numberOfComments")
+            or raw_post.get("number_of_comments")
+            or existing.number_of_comments
+        )
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
         return existing
 
-    community_name = raw_post.get("communityName") or f"r/{subreddit}"
-    normalized_subreddit = community_name.removeprefix("r/") if community_name else subreddit
     post = Post(
         subreddit=normalized_subreddit,
         title=raw_post.get("title") or "Untitled Post",
+        body=raw_post.get("selfText") or raw_post.get("body"),
         url=url,
+        upvotes=raw_post.get("score") or raw_post.get("upVotes") or raw_post.get("upvotes") or 0,
+        number_of_comments=(
+            raw_post.get("numComments")
+            or raw_post.get("numberOfComments")
+            or raw_post.get("number_of_comments")
+            or 0
+        ),
         created_at=_parse_datetime(raw_post.get("createdAt")) or datetime.utcnow(),
     )
     db.add(post)
@@ -183,6 +209,12 @@ def save_comment(db: Session, post_id: int, payload: dict) -> Comment:
     )
     existing = db.scalar(stmt)
     if existing:
+        existing.author = payload["author"]
+        existing.post_url = payload["post_url"]
+        existing.upvotes = payload["upvotes"]
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
         return existing
 
     comment = Comment(
@@ -191,6 +223,7 @@ def save_comment(db: Session, post_id: int, payload: dict) -> Comment:
         comment_url=payload["comment_url"],
         post_url=payload["post_url"],
         author=payload["author"],
+        upvotes=payload["upvotes"],
         created_at=payload["created_at"] or datetime.utcnow(),
     )
     db.add(comment)
@@ -274,7 +307,7 @@ def derive_post_url(url: str | None) -> str | None:
     if not url:
         return None
 
-    parsed = urlparse(url)
+    parsed = urlparse(absolute_reddit_url(url))
     parts = [part for part in parsed.path.split("/") if part]
     try:
         comments_idx = parts.index("comments")
@@ -286,6 +319,16 @@ def derive_post_url(url: str | None) -> str | None:
 
     post_path = "/" + "/".join(parts[: comments_idx + 3]) + "/"
     return f"{parsed.scheme}://{parsed.netloc}{post_path}"
+
+
+def absolute_reddit_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    if url.startswith("/"):
+        return f"https://www.reddit.com{url}"
+    return url
 
 
 def _parse_datetime(value: str | None) -> datetime | None:

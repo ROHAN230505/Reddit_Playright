@@ -9,6 +9,12 @@ class Settings:
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     apify_actor_id = os.getenv("APIFY_ACTOR_ID", "prodiger/reddit-scraper")
+    scrape_limit = int(os.getenv("SCRAPE_LIMIT", "15"))
+    scrape_sort = os.getenv("SCRAPE_SORT", "hot")
+    scrape_time_filter = os.getenv("SCRAPE_TIME_FILTER", "week")
+    max_comments_per_post = int(os.getenv("MAX_COMMENTS_PER_POST", "25"))
+    comment_depth = int(os.getenv("COMMENT_DEPTH", "3"))
+    max_request_retries = int(os.getenv("MAX_REQUEST_RETRIES", "5"))
 
 
 settings = Settings()
