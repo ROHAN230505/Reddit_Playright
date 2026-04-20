@@ -8,10 +8,15 @@ def fetch_subreddit(subreddit: str, limit: int = 50) -> list[dict]:
         raise ValueError("APIFY_TOKEN is not configured.")
 
     client = ApifyClient(settings.apify_token)
-    run = client.actor("prodiger/reddit-scraper").call(
+    run = client.actor(settings.apify_actor_id).call(
         run_input={
-            "urls": [{"url": f"https://www.reddit.com/r/{subreddit}/"}],
-            "maxItems": limit,
+            "redditUrls": [f"https://www.reddit.com/r/{subreddit}/"],
+            "searchQuery": "",
+            "searchSubreddit": "",
+            "sortOrder": "hot",
+            "timeFilter": "week",
+            "maxPostsPerSource": limit,
+            "includeComments": True,
         }
     )
     dataset = client.dataset(run["defaultDatasetId"])

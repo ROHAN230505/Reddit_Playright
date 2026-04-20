@@ -49,3 +49,11 @@ class Reply(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     comment: Mapped["Comment"] = relationship("Comment", back_populates="replies")
+
+
+class TrackedSubreddit(Base):
+    __tablename__ = "tracked_subreddits"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

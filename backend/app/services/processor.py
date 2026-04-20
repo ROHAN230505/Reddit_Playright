@@ -1,21 +1,63 @@
 import random
-from collections.abc import Iterable
 from datetime import datetime
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Comment, Post, Reply
+from app.db.models import Comment, Post, Reply, TrackedSubreddit
 from app.services.apify_service import fetch_subreddit
 from app.services.deepseek_service import deepseek_call
+
+DEFAULT_TRACKED_SUBREDDITS = [
+    "ArtificialIntelligence",
+    "artificial",
+    "AiDeveloperNews",
+    "MachineLearning",
+    "AIChatReviews",
+    "softwareengineer",
+    "Automate",
+    "technews",
+    "technology",
+    "tech",
+    "AiBuilders",
+    "AIToolTesting",
+    "AI_Agents",
+    "AgentsOfAI",
+    "aiagents",
+    "singularity",
+    "AiAssisted",
+    "ArtificialSentience",
+    "ChatGPTcomplaints",
+    "ChatGPT",
+    "Anthropic",
+    "ClaudeAI",
+    "devworlds",
+    "LocalLLaMA",
+    "grok",
+    "vibecoding",
+    "AI_India",
+    "ChatGPTCoding",
+    "BlackboxAI_",
+    "DeepSeek",
+    "LocalLLM",
+    "LLM",
+    "AIToolMadeEasy",
+    "LLMDevs",
+    "OpenAI",
+    "OnlyAICoding",
+    "geminiprotocol",
+    "OpenSourceAI",
+    "AskVibecoders",
+]
 
 
 def normalize_comment(raw: dict, fallback_post_url: str | None = None) -> dict:
     return {
         "text": raw.get("text", "") or raw.get("body", "") or "",
         "comment_url": raw.get("url") or raw.get("commentUrl"),
-        "post_url": raw.get("postUrl") or fallback_post_url,
-        "author": raw.get("author"),
+        "post_url": raw.get("postUrl") or derive_post_url(raw.get("url")) or fallback_post_url,
+        "author": raw.get("author") or raw.get("username"),
         "created_at": _parse_datetime(raw.get("createdAt")),
     }
 
@@ -56,32 +98,55 @@ Comment:
 
 
 def process_subreddit(db: Session, subreddit: str, limit: int = 50) -> dict:
-    posts = fetch_subreddit(subreddit, limit=limit)
+    subreddit = subreddit.strip().removeprefix("r/")
+    rows = fetch_subreddit(subreddit, limit=limit)
     stats = {"posts": 0, "comments": 0, "replies": 0}
+    current_post: Post | None = None
+    posts_by_url: dict[str, Post] = {}
 
-    for raw_post in posts:
-        post = save_post(db, subreddit, raw_post)
-        stats["posts"] += 1
+    for row in rows:
+        row_type = (row.get("dataType") or row.get("type") or "").lower()
+        if row_type == "post":
+            current_post = save_post(db, subreddit, row)
+            posts_by_url[current_post.url] = current_post
+            stats["posts"] += 1
+            continue
 
-        for raw_comment in iter_comments(raw_post):
-            comment_payload = normalize_comment(raw_comment, fallback_post_url=post.url)
-            if not comment_payload["text"].strip():
-                continue
+        if row_type != "comment":
+            continue
 
-            stats["comments"] += 1
-            if not classify_ai_relevance(comment_payload["text"]):
-                continue
+        comment_payload = normalize_comment(
+            row,
+            fallback_post_url=current_post.url if current_post else None,
+        )
+        if not comment_payload["text"].strip():
+            continue
 
-            comment = save_comment(db, post.id, comment_payload)
-            include_promo = should_insert_promo()
-            reply_text = generate_reply(comment.text, include_promo)
-            save_reply(
-                db,
-                comment_id=comment.id,
-                reply_text=reply_text,
-                is_ai_relevant=True,
-                includes_promo=include_promo,
-            )
+        post = resolve_post_for_comment(
+            db,
+            subreddit=subreddit,
+            payload=comment_payload,
+            posts_by_url=posts_by_url,
+            fallback_post=current_post,
+        )
+        if not post:
+            continue
+
+        stats["comments"] += 1
+        if not classify_ai_relevance(comment_payload["text"]):
+            continue
+
+        comment = save_comment(db, post.id, comment_payload)
+        include_promo = should_insert_promo()
+        reply_text = generate_reply(comment.text, include_promo)
+        reply = save_reply(
+            db,
+            comment_id=comment.id,
+            reply_text=reply_text,
+            is_ai_relevant=True,
+            includes_promo=include_promo,
+        )
+        if reply:
             stats["replies"] += 1
 
     return stats
@@ -96,9 +161,11 @@ def save_post(db: Session, subreddit: str, raw_post: dict) -> Post:
     if existing:
         return existing
 
+    community_name = raw_post.get("communityName") or f"r/{subreddit}"
+    normalized_subreddit = community_name.removeprefix("r/") if community_name else subreddit
     post = Post(
-        subreddit=subreddit,
-        title=raw_post.get("title", "Untitled Post"),
+        subreddit=normalized_subreddit,
+        title=raw_post.get("title") or "Untitled Post",
         url=url,
         created_at=_parse_datetime(raw_post.get("createdAt")) or datetime.utcnow(),
     )
@@ -139,7 +206,11 @@ def save_reply(
     is_ai_relevant: bool,
     includes_promo: bool,
     status: str = "PENDING",
-) -> Reply:
+) -> Reply | None:
+    existing = db.scalar(select(Reply).where(Reply.comment_id == comment_id))
+    if existing:
+        return None
+
     reply = Reply(
         comment_id=comment_id,
         reply_text=reply_text,
@@ -153,11 +224,68 @@ def save_reply(
     return reply
 
 
-def iter_comments(raw_post: dict) -> Iterable[dict]:
-    comments = raw_post.get("comments") or []
-    if isinstance(comments, list):
-        return comments
-    return []
+def resolve_post_for_comment(
+    db: Session,
+    subreddit: str,
+    payload: dict,
+    posts_by_url: dict[str, Post],
+    fallback_post: Post | None,
+) -> Post | None:
+    post_url = payload.get("post_url")
+    if post_url and post_url in posts_by_url:
+        return posts_by_url[post_url]
+
+    if post_url:
+        existing = db.scalar(select(Post).where(Post.url == post_url))
+        if existing:
+            posts_by_url[post_url] = existing
+            return existing
+
+        placeholder = Post(
+            subreddit=subreddit.removeprefix("r/"),
+            title="Untitled Post",
+            url=post_url,
+            created_at=datetime.utcnow(),
+        )
+        db.add(placeholder)
+        db.commit()
+        db.refresh(placeholder)
+        posts_by_url[post_url] = placeholder
+        return placeholder
+
+    return fallback_post
+
+
+def ensure_default_tracked_subreddits(db: Session) -> None:
+    existing_names = {
+        item.name.lower() for item in db.scalars(select(TrackedSubreddit)).all()
+    }
+    created = False
+    for name in DEFAULT_TRACKED_SUBREDDITS:
+        if name.lower() in existing_names:
+            continue
+        db.add(TrackedSubreddit(name=name))
+        created = True
+    if created:
+        db.commit()
+
+
+def derive_post_url(url: str | None) -> str | None:
+    if not url:
+        return None
+
+    parsed = urlparse(url)
+    parts = [part for part in parsed.path.split("/") if part]
+    try:
+        comments_idx = parts.index("comments")
+    except ValueError:
+        return url
+
+    if len(parts) < comments_idx + 3:
+        return url
+
+    post_path = "/" + "/".join(parts[: comments_idx + 3]) + "/"
+    return f"{parsed.scheme}://{parsed.netloc}{post_path}"
 
 
 def _parse_datetime(value: str | None) -> datetime | None:

@@ -8,6 +8,18 @@ class FetchRequest(BaseModel):
     limit: int = Field(default=50, ge=1, le=500)
 
 
+class TrackedSubredditCreate(BaseModel):
+    name: str = Field(min_length=1)
+
+
+class TrackedSubredditItem(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ReplyStatusUpdate(BaseModel):
     status: str
 

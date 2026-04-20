@@ -8,6 +8,7 @@ class Settings:
     apify_token = os.getenv("APIFY_TOKEN", "")
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
     deepseek_model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    apify_actor_id = os.getenv("APIFY_ACTOR_ID", "prodiger/reddit-scraper")
 
 
 settings = Settings()
