@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Comment, Post, Reply, TrackedSubreddit
+from app.db.models import Comment, Post, Reply, ScrapeRun, TrackedSubreddit
 from app.services.apify_service import fetch_subreddit
 from app.services.deepseek_service import deepseek_call
 
@@ -102,12 +102,24 @@ Comment:
     return deepseek_call(prompt).strip()
 
 
-def process_subreddit(db: Session, subreddit: str, limit: int = 50) -> dict:
+def process_subreddit(
+    db: Session,
+    subreddit: str,
+    limit: int = 50,
+    scrape_run: ScrapeRun | None = None,
+) -> dict:
     subreddit = subreddit.strip().removeprefix("r/")
-    rows = fetch_subreddit(subreddit, limit=limit)
+    apify_payload = fetch_subreddit(subreddit, limit=limit)
+    rows = apify_payload["items"]
     stats = {"posts": 0, "comments": 0, "replies": 0}
     current_post: Post | None = None
     posts_by_url: dict[str, Post] = {}
+
+    if scrape_run:
+        scrape_run.apify_run_id = apify_payload.get("apify_run_id")
+        db.add(scrape_run)
+        db.commit()
+        db.refresh(scrape_run)
 
     for row in rows:
         row_type = (row.get("dataType") or row.get("type") or "").lower()
@@ -154,7 +166,10 @@ def process_subreddit(db: Session, subreddit: str, limit: int = 50) -> dict:
         if reply:
             stats["replies"] += 1
 
-    return stats
+    return {
+        **stats,
+        "apify_run_id": apify_payload.get("apify_run_id"),
+    }
 
 
 def save_post(db: Session, subreddit: str, raw_post: dict) -> Post:

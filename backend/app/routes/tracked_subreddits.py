@@ -63,6 +63,11 @@ def run_tracked_subreddits(
     ).all()
     jobs = []
     for item in subreddits:
-        task = process_subreddit_job.delay(subreddit=item.name, limit=limit)
+        task = process_subreddit_job.delay(
+            subreddit=item.name,
+            limit=limit,
+            source="manual_all",
+            triggered_by="api:/tracked-subreddits/run",
+        )
         jobs.append({"subreddit": item.name, "task_id": task.id})
     return {"message": "Tracked subreddit jobs queued", "jobs": jobs}

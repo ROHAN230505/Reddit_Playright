@@ -13,7 +13,12 @@ def trigger_fetch(payload: FetchRequest):
         normalized_name = subreddit.strip().removeprefix("r/")
         if not normalized_name:
             continue
-        task = process_subreddit_job.delay(subreddit=normalized_name, limit=payload.limit)
+        task = process_subreddit_job.delay(
+            subreddit=normalized_name,
+            limit=payload.limit,
+            source="manual_selected",
+            triggered_by="api:/fetch",
+        )
         queued.append({"subreddit": normalized_name, "task_id": task.id})
 
     return {"message": "Fetch jobs queued", "jobs": queued}

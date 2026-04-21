@@ -68,6 +68,70 @@ class ContentPostItem(BaseModel):
 
 class SubredditContentResponse(BaseModel):
     subreddit: str
+    page: int
+    page_size: int
+    total_posts: int
     post_count: int
     comment_count: int
     posts: list[ContentPostItem]
+
+
+class ScrapeRunItem(BaseModel):
+    id: int
+    subreddit: str
+    source: str
+    limit: int
+    status: str
+    apify_run_id: str | None
+    posts_count: int
+    comments_count: int
+    replies_count: int
+    error_message: str | None
+    triggered_by: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class ScrapeRunListResponse(BaseModel):
+    page: int
+    page_size: int
+    total_runs: int
+    runs: list[ScrapeRunItem]
+
+
+class OpportunityReplyItem(BaseModel):
+    reply_id: int
+    comment_text: str
+    comment_url: str | None
+    comment_author: str | None
+    comment_upvotes: int
+    reply_text: str
+    includes_promo: bool
+    created_at: datetime
+    value_score: int
+
+
+class OpportunityPostItem(BaseModel):
+    post_id: int
+    subreddit: str
+    post_title: str
+    post_body: str | None
+    post_url: str
+    post_upvotes: int
+    post_comment_count: int
+    post_created_at: datetime
+    promotable_replies: list[OpportunityReplyItem]
+    normal_replies: list[OpportunityReplyItem]
+    promotable_count: int
+    normal_count: int
+    opportunity_score: int
+
+
+class SubredditOpportunityResponse(BaseModel):
+    subreddit: str
+    page: int
+    page_size: int
+    total_posts: int
+    posts: list[OpportunityPostItem]

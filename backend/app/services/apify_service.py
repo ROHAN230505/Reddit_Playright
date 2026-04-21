@@ -3,7 +3,7 @@ import requests
 from app.config import settings
 
 
-def fetch_subreddit(subreddit: str, limit: int = 50) -> list[dict]:
+def fetch_subreddit(subreddit: str, limit: int = 50) -> dict:
     if not settings.apify_token:
         raise ValueError("APIFY_TOKEN is not configured.")
 
@@ -35,7 +35,7 @@ def fetch_subreddit(subreddit: str, limit: int = 50) -> list[dict]:
         or run.get("defaultDatasetId")
     )
     if not dataset_id:
-        return []
+        return {"items": [], "apify_run_id": run.get("id")}
 
     wait_response = requests.get(
         f"https://api.apify.com/v2/actor-runs/{run['id']}",
@@ -53,4 +53,7 @@ def fetch_subreddit(subreddit: str, limit: int = 50) -> list[dict]:
     )
     items_response.raise_for_status()
     payload = items_response.json()
-    return payload if isinstance(payload, list) else []
+    return {
+        "items": payload if isinstance(payload, list) else [],
+        "apify_run_id": run.get("id"),
+    }

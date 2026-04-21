@@ -61,3 +61,21 @@ class TrackedSubreddit(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ScrapeRun(Base):
+    __tablename__ = "scrape_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    subreddit: Mapped[str] = mapped_column(String(255), index=True)
+    source: Mapped[str] = mapped_column(String(50), index=True)
+    limit: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(50), default="RUNNING", index=True)
+    apify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    posts_count: Mapped[int] = mapped_column(Integer, default=0)
+    comments_count: Mapped[int] = mapped_column(Integer, default=0)
+    replies_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    triggered_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

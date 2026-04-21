@@ -2,9 +2,16 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Comment, Post
+from app.db.models import Comment, Post, Reply
 from app.db.session import get_db
-from app.schemas import ContentCommentItem, ContentPostItem, SubredditContentResponse
+from app.schemas import (
+    ContentCommentItem,
+    ContentPostItem,
+    OpportunityPostItem,
+    OpportunityReplyItem,
+    SubredditContentResponse,
+    SubredditOpportunityResponse,
+)
 
 router = APIRouter(prefix="/subreddits", tags=["subreddits"])
 
@@ -12,16 +19,21 @@ router = APIRouter(prefix="/subreddits", tags=["subreddits"])
 @router.get("/{subreddit}/content", response_model=SubredditContentResponse)
 def get_subreddit_content(
     subreddit: str,
-    post_limit: int = Query(default=12, ge=1, le=50),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=6, ge=1, le=24),
     comment_limit: int = Query(default=6, ge=1, le=20),
     db: Session = Depends(get_db),
 ):
     normalized = subreddit.strip().removeprefix("r/")
+    total_posts = db.scalar(
+        select(func.count(Post.id)).where(func.lower(Post.subreddit) == normalized.lower())
+    ) or 0
     post_stmt = (
         select(Post)
         .where(func.lower(Post.subreddit) == normalized.lower())
         .order_by(Post.upvotes.desc(), Post.created_at.desc())
-        .limit(post_limit)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
     posts = db.scalars(post_stmt).all()
 
@@ -65,7 +77,115 @@ def get_subreddit_content(
 
     return SubredditContentResponse(
         subreddit=normalized,
+        page=page,
+        page_size=page_size,
+        total_posts=total_posts,
         post_count=len(posts),
         comment_count=comment_count,
         posts=items,
+    )
+
+
+@router.get("/{subreddit}/opportunities", response_model=SubredditOpportunityResponse)
+def get_subreddit_opportunities(
+    subreddit: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=4, ge=1, le=24),
+    reply_limit: int = Query(default=3, ge=1, le=10),
+    db: Session = Depends(get_db),
+):
+    normalized = subreddit.strip().removeprefix("r/")
+    stmt = (
+        select(Reply)
+        .join(Reply.comment)
+        .join(Comment.post)
+        .where(
+            Reply.status == "PENDING",
+            func.lower(Post.subreddit) == normalized.lower(),
+        )
+        .order_by(
+            Post.upvotes.desc(),
+            Comment.upvotes.desc(),
+            Post.number_of_comments.desc(),
+            Reply.created_at.desc(),
+        )
+    )
+    replies = db.scalars(stmt).all()
+
+    grouped_posts: dict[int, dict] = {}
+    for reply in replies:
+        comment = reply.comment
+        post = comment.post
+        post_bucket = grouped_posts.setdefault(
+            post.id,
+            {
+                "post_id": post.id,
+                "subreddit": post.subreddit,
+                "post_title": post.title,
+                "post_body": post.body,
+                "post_url": post.url,
+                "post_upvotes": post.upvotes,
+                "post_comment_count": post.number_of_comments,
+                "post_created_at": post.created_at,
+                "promotable_replies": [],
+                "normal_replies": [],
+                "opportunity_score": 0,
+            },
+        )
+        value_score = max(post.upvotes, 0) * 3 + max(comment.upvotes, 0) * 4 + max(post.number_of_comments, 0)
+        payload = OpportunityReplyItem(
+            reply_id=reply.id,
+            comment_text=comment.text,
+            comment_url=comment.comment_url,
+            comment_author=comment.author,
+            comment_upvotes=comment.upvotes,
+            reply_text=reply.reply_text,
+            includes_promo=reply.includes_promo,
+            created_at=reply.created_at,
+            value_score=value_score,
+        )
+        bucket_name = "promotable_replies" if reply.includes_promo else "normal_replies"
+        post_bucket[bucket_name].append(payload)
+        post_bucket["opportunity_score"] += value_score
+
+    grouped_items = []
+    for item in grouped_posts.values():
+        promotable = sorted(item["promotable_replies"], key=lambda candidate: candidate.value_score, reverse=True)
+        normal = sorted(item["normal_replies"], key=lambda candidate: candidate.value_score, reverse=True)
+        grouped_items.append(
+            OpportunityPostItem(
+                post_id=item["post_id"],
+                subreddit=item["subreddit"],
+                post_title=item["post_title"],
+                post_body=item["post_body"],
+                post_url=item["post_url"],
+                post_upvotes=item["post_upvotes"],
+                post_comment_count=item["post_comment_count"],
+                post_created_at=item["post_created_at"],
+                promotable_replies=promotable[:reply_limit],
+                normal_replies=normal[:reply_limit],
+                promotable_count=len(promotable),
+                normal_count=len(normal),
+                opportunity_score=item["opportunity_score"],
+            )
+        )
+
+    grouped_items.sort(
+        key=lambda item: (
+            item.promotable_count + item.normal_count,
+            item.opportunity_score,
+            item.post_upvotes,
+            item.post_comment_count,
+        ),
+        reverse=True,
+    )
+    total_posts = len(grouped_items)
+    start = (page - 1) * page_size
+    page_items = grouped_items[start : start + page_size]
+    return SubredditOpportunityResponse(
+        subreddit=normalized,
+        page=page,
+        page_size=page_size,
+        total_posts=total_posts,
+        posts=page_items,
     )

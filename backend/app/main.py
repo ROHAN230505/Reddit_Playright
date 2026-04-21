@@ -6,6 +6,7 @@ from app.config import settings
 from app.db.session import Base, engine
 from app.routes.fetch import router as fetch_router
 from app.routes.replies import router as replies_router
+from app.routes.scrape_runs import router as scrape_runs_router
 from app.routes.subreddits import router as subreddits_router
 from app.routes.tracked_subreddits import router as tracked_subreddits_router
 
@@ -28,6 +29,23 @@ def _ensure_runtime_columns():
         if "upvotes" not in comment_columns:
             statements.append("ALTER TABLE comments ADD COLUMN upvotes INTEGER DEFAULT 0")
 
+    if "scrape_runs" in existing_tables:
+        scrape_run_columns = {column["name"] for column in inspector.get_columns("scrape_runs")}
+        if "apify_run_id" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN apify_run_id VARCHAR(255)")
+        if "posts_count" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN posts_count INTEGER DEFAULT 0")
+        if "comments_count" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN comments_count INTEGER DEFAULT 0")
+        if "replies_count" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN replies_count INTEGER DEFAULT 0")
+        if "error_message" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN error_message TEXT")
+        if "triggered_by" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN triggered_by VARCHAR(255)")
+        if "finished_at" not in scrape_run_columns:
+            statements.append("ALTER TABLE scrape_runs ADD COLUMN finished_at TIMESTAMP")
+
     if not statements:
         return
 
@@ -42,6 +60,7 @@ _ensure_runtime_columns()
 app = FastAPI(title=settings.app_name)
 app.include_router(fetch_router)
 app.include_router(replies_router)
+app.include_router(scrape_runs_router)
 app.include_router(subreddits_router)
 app.include_router(tracked_subreddits_router)
 
