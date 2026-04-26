@@ -1,10 +1,14 @@
 import math
+import os
 from collections import Counter
 
 import requests
 import streamlit as st
 
-API = "http://backend:8000"
+# BACKEND_BASE_URL lets the dashboard run identically inside Docker Compose
+# (default http://backend:8000) and on a developer host pointed at a remote
+# backend (e.g. http://localhost:8000).
+API = os.getenv("BACKEND_BASE_URL", "http://backend:8000").rstrip("/")
 
 
 def api_get(path: str, **kwargs):
@@ -111,6 +115,21 @@ def mark_reply_done(reply_id: int):
     api_patch(f"/replies/{reply_id}", json={"status": "DONE"})
 
 
+def approve_reply(reply_id: int):
+    api_patch(f"/replies/{reply_id}", json={"status": "APPROVED"})
+
+
+def load_posting_queue(status: str, limit: int = 200):
+    return api_get("/replies", params={"status": status, "limit": limit})
+
+
+def load_worker_summary():
+    try:
+        return api_get("/worker/queue")
+    except requests.RequestException:
+        return {"counts": {}}
+
+
 def render_reply_column(title: str, replies: list[dict], empty_message: str, column_key: str):
     st.markdown(f"<div class='split-title'>{title}</div>", unsafe_allow_html=True)
     if not replies:
@@ -127,8 +146,15 @@ def render_reply_column(title: str, replies: list[dict], empty_message: str, col
             st.markdown(f"[Open Comment]({reply['comment_url']})")
         st.caption("Suggested reply")
         st.code(safe_text(reply["reply_text"]))
-        action_col, meta_col = st.columns([1.1, 3.4])
-        if action_col.button("Mark Done", key=f"{column_key}_done_{reply['reply_id']}", use_container_width=True):
+        approve_col, done_col, meta_col = st.columns([1.1, 1.1, 3.4])
+        if approve_col.button(
+            "Approve to Post",
+            key=f"{column_key}_approve_{reply['reply_id']}",
+            use_container_width=True,
+        ):
+            approve_reply(reply["reply_id"])
+            st.rerun()
+        if done_col.button("Mark Done", key=f"{column_key}_done_{reply['reply_id']}", use_container_width=True):
             mark_reply_done(reply["reply_id"])
             st.rerun()
         meta_col.markdown(
@@ -486,8 +512,14 @@ with main_col:
         unsafe_allow_html=True,
     )
 
-    tabs = st.tabs(["Feed", "Opportunities", "Scrape History", "Done Replies"])
-    feed_tab, opportunities_tab, history_tab, done_tab = tabs
+    tabs = st.tabs([
+        "Feed",
+        "Opportunities",
+        "Scrape History",
+        "Done Replies",
+        "Posting Queue",
+    ])
+    feed_tab, opportunities_tab, history_tab, done_tab, posting_tab = tabs
 
     with feed_tab:
         st.markdown('<div class="panel">', unsafe_allow_html=True)
@@ -668,4 +700,74 @@ with main_col:
                 st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("No done replies yet for the current subreddit scope.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with posting_tab:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.subheader("Posting Queue")
+        st.markdown(
+            '<div class="section-note">Approved drafts are claimed by the Playwright worker and posted to Reddit. Failed jobs are requeued automatically and can be retried here.</div>',
+            unsafe_allow_html=True,
+        )
+
+        worker_counts = load_worker_summary().get("counts", {})
+        c1, c2, c3, c4 = st.columns(4)
+        c1.markdown(
+            f'<div class="metric-card"><div class="metric-label">Approved</div><div class="metric-value">{worker_counts.get("APPROVED", 0)}</div></div>',
+            unsafe_allow_html=True,
+        )
+        c2.markdown(
+            f'<div class="metric-card"><div class="metric-label">Posting</div><div class="metric-value">{worker_counts.get("POSTING", 0)}</div></div>',
+            unsafe_allow_html=True,
+        )
+        c3.markdown(
+            f'<div class="metric-card"><div class="metric-label">Posted</div><div class="metric-value">{worker_counts.get("POSTED", 0)}</div></div>',
+            unsafe_allow_html=True,
+        )
+        c4.markdown(
+            f'<div class="metric-card"><div class="metric-label">Failed</div><div class="metric-value">{worker_counts.get("FAILED", 0)}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+        for status_label, status_value in (
+            ("Approved (waiting for worker)", "APPROVED"),
+            ("Currently Posting", "POSTING"),
+            ("Failed", "FAILED"),
+            ("Recently Posted", "POSTED"),
+        ):
+            try:
+                items = load_posting_queue(status_value, limit=50)
+            except requests.RequestException as exc:
+                st.error(f"Could not load {status_label}: {exc}")
+                continue
+
+            st.markdown(f"#### {status_label} ({len(items)})")
+            if not items:
+                st.caption("Nothing here yet.")
+                continue
+
+            for item in items:
+                st.markdown("<div class='reply-card'>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='reply-meta'>r/{item['subreddit']} | reply #{item['reply_id']} | attempts {item.get('posting_attempts', 0)} | {item['status']}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.write(safe_text(item["comment_text"]))
+                st.code(safe_text(item["reply_text"]))
+                target_url = item.get("target_url") or item.get("comment_url") or item.get("post_url")
+                if target_url:
+                    st.markdown(f"[Open Target]({target_url})")
+                if item.get("posting_error"):
+                    st.error(item["posting_error"])
+                if item.get("posted_at"):
+                    st.caption(f"Posted at {item['posted_at']}")
+                if status_value == "FAILED":
+                    if st.button(
+                        "Retry (re-approve)",
+                        key=f"retry_{item['reply_id']}",
+                        use_container_width=False,
+                    ):
+                        approve_reply(item["reply_id"])
+                        st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)

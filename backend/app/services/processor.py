@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Comment, Post, Reply, ScrapeRun, TrackedSubreddit
 from app.services.apify_service import fetch_subreddit
 from app.services.deepseek_service import deepseek_call
+from app.services.reddit_targets import derive_reply_targets
 
 DEFAULT_TRACKED_SUBREDDITS = [
     "ArtificialIntelligence",
@@ -259,12 +260,27 @@ def save_reply(
     if existing:
         return None
 
+    targets: dict = {}
+    comment = db.get(Comment, comment_id)
+    if comment is not None:
+        post_subreddit = comment.post.subreddit if comment.post is not None else None
+        targets = derive_reply_targets(
+            comment_url=comment.comment_url,
+            post_url=comment.post_url,
+            subreddit=post_subreddit,
+        )
+
     reply = Reply(
         comment_id=comment_id,
         reply_text=reply_text,
         is_ai_relevant=is_ai_relevant,
         includes_promo=includes_promo,
         status=status,
+        target_url=targets.get("target_url"),
+        target_type=targets.get("target_type"),
+        reddit_post_id=targets.get("reddit_post_id"),
+        reddit_comment_id=targets.get("reddit_comment_id"),
+        subreddit=targets.get("subreddit"),
     )
     db.add(reply)
     db.commit()

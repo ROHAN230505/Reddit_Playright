@@ -13,3 +13,11 @@ htmlcov/
 .DS_Store
 Thumbs.db
 .streamlit/secrets.toml
+
+# Playwright posting worker artifacts
+.venv-worker/
+worker-screenshots/
+.reddit-worker-profile/
+*.sqlite
+backend/reddit_ai.db
+backend/tests/_test.sqlite

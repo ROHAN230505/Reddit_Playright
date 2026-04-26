@@ -52,6 +52,16 @@ def get_replies(
                 post_upvotes=post.upvotes,
                 post_comment_count=post.number_of_comments,
                 subreddit=post.subreddit,
+                target_type=reply.target_type,
+                target_url=reply.target_url,
+                reddit_post_id=reply.reddit_post_id,
+                reddit_comment_id=reply.reddit_comment_id,
+                posting_attempts=reply.posting_attempts or 0,
+                posting_claimed_at=reply.posting_claimed_at,
+                posting_claimed_by=reply.posting_claimed_by,
+                posting_error=reply.posting_error,
+                posted_at=reply.posted_at,
+                posted_reddit_comment_id=reply.posted_reddit_comment_id,
             )
         )
     return items

@@ -3,12 +3,14 @@ from fastapi import FastAPI
 from sqlalchemy import inspect, text
 
 from app.config import settings
+from app.db import models  # noqa: F401
 from app.db.session import Base, engine
 from app.routes.fetch import router as fetch_router
 from app.routes.replies import router as replies_router
 from app.routes.scrape_runs import router as scrape_runs_router
 from app.routes.subreddits import router as subreddits_router
 from app.routes.tracked_subreddits import router as tracked_subreddits_router
+from app.routes.worker import router as worker_router
 
 def _ensure_runtime_columns():
     inspector = inspect(engine)
@@ -46,6 +48,31 @@ def _ensure_runtime_columns():
         if "finished_at" not in scrape_run_columns:
             statements.append("ALTER TABLE scrape_runs ADD COLUMN finished_at TIMESTAMP")
 
+    if "replies" in existing_tables:
+        reply_columns = {column["name"] for column in inspector.get_columns("replies")}
+        if "target_type" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN target_type VARCHAR(20)")
+        if "target_url" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN target_url VARCHAR(1000)")
+        if "reddit_post_id" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN reddit_post_id VARCHAR(50)")
+        if "reddit_comment_id" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN reddit_comment_id VARCHAR(50)")
+        if "subreddit" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN subreddit VARCHAR(255)")
+        if "posting_attempts" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posting_attempts INTEGER DEFAULT 0")
+        if "posting_claimed_at" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posting_claimed_at TIMESTAMP")
+        if "posting_claimed_by" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posting_claimed_by VARCHAR(255)")
+        if "posting_error" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posting_error TEXT")
+        if "posted_at" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posted_at TIMESTAMP")
+        if "posted_reddit_comment_id" not in reply_columns:
+            statements.append("ALTER TABLE replies ADD COLUMN posted_reddit_comment_id VARCHAR(50)")
+
     if not statements:
         return
 
@@ -63,6 +90,7 @@ app.include_router(replies_router)
 app.include_router(scrape_runs_router)
 app.include_router(subreddits_router)
 app.include_router(tracked_subreddits_router)
+app.include_router(worker_router)
 
 
 @app.get("/health")

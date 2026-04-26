@@ -40,9 +40,38 @@ services:
     build: ./dashboard
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
+    env_file: .env
+    environment:
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://backend:8000}
     depends_on:
       - backend
       - scheduler
 
+  # Playwright posting worker — opt-in via the `playwright` profile so it
+  # never starts on a default `docker compose up`. Run it explicitly with
+  # `docker compose --profile playwright up playwright_worker`.
+  #
+  # IMPORTANT: log in to Reddit once before running the loop:
+  #   docker compose --profile playwright run --rm playwright_worker login
+  # The session is persisted in the named volume `playwright_profile`.
+  playwright_worker:
+    build: ./playwright_worker
+    profiles: ["playwright"]
+    env_file: .env
+    environment:
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://backend:8000}
+      PLAYWRIGHT_WORKER_NAME: ${PLAYWRIGHT_WORKER_NAME:-playwright-docker}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-20}
+      CLAIM_STALE_AFTER_SECONDS: ${CLAIM_STALE_AFTER_SECONDS:-600}
+      HEADLESS: ${HEADLESS:-true}
+      USE_OLD_REDDIT: ${USE_OLD_REDDIT:-true}
+    volumes:
+      - playwright_profile:/home/pwuser/.reddit-worker-profile
+      - ./worker-screenshots:/app/worker-screenshots
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  playwright_profile:

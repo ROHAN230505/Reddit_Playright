@@ -52,6 +52,19 @@ class Reply(Base):
     status: Mapped[str] = mapped_column(String(50), default="PENDING", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    # Playwright posting worker fields (additive; nullable for backward compatibility)
+    target_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    target_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    reddit_post_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    reddit_comment_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    subreddit: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    posting_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    posting_claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    posting_claimed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    posting_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    posted_reddit_comment_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     comment: Mapped["Comment"] = relationship("Comment", back_populates="replies")
 
 
