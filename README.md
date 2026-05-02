@@ -138,6 +138,24 @@ Queue** tab with a Retry button.
 - For non-Docker deployments (e.g. systemd on Linux), use the same env vars
   and run `python -m playwright_worker run` under your supervisor of choice.
 
+## Dashboard Production Hardening
+
+The dashboard login cookie supports expiration and secure cookies. For HTTPS,
+set the production host values in `.env` and run the optional Caddy profile:
+
+```bash
+DASHBOARD_COOKIE_SECURE=true
+DASHBOARD_SESSION_MAX_AGE_SECONDS=43200
+DASHBOARD_SITE_ADDRESS=dashboard.example.com
+CORS_ALLOWED_ORIGINS=https://dashboard.example.com
+
+docker compose --profile https up -d --build
+```
+
+Use a real DNS name for `DASHBOARD_SITE_ADDRESS` so Caddy can provision a
+trusted certificate. If the dashboard is temporarily served by IP address, keep
+`DASHBOARD_COOKIE_SECURE=false` until a trusted HTTPS endpoint is available.
+
 ### Tests
 
 ```bash

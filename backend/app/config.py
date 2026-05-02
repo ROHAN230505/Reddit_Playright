@@ -15,6 +15,14 @@ class Settings:
     max_comments_per_post = int(os.getenv("MAX_COMMENTS_PER_POST", "25"))
     comment_depth = int(os.getenv("COMMENT_DEPTH", "3"))
     max_request_retries = int(os.getenv("MAX_REQUEST_RETRIES", "5"))
+    cors_allowed_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ALLOWED_ORIGINS",
+            "http://localhost:8501,http://127.0.0.1:8501",
+        ).split(",")
+        if origin.strip()
+    ]
 
 
 settings = Settings()

@@ -52,9 +52,24 @@ services:
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
       DASHBOARD_COOKIE_SECURE: ${DASHBOARD_COOKIE_SECURE:-false}
+      DASHBOARD_SESSION_MAX_AGE_SECONDS: ${DASHBOARD_SESSION_MAX_AGE_SECONDS:-43200}
     depends_on:
       - backend
       - scheduler
+
+  https_proxy:
+    image: caddy:2
+    profiles: ["https"]
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DASHBOARD_SITE_ADDRESS: ${DASHBOARD_SITE_ADDRESS:-:443}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - dashboard
 
   # Playwright posting worker — opt-in via the `playwright` profile so it
   # never starts on a default `docker compose up`. Run it explicitly with
@@ -84,3 +99,5 @@ services:
 volumes:
   postgres_data:
   playwright_profile:
+  caddy_data:
+  caddy_config:
