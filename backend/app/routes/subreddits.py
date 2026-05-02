@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -22,15 +24,21 @@ def get_subreddit_content(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=6, ge=1, le=24),
     comment_limit: int = Query(default=6, ge=1, le=20),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     normalized = subreddit.strip().removeprefix("r/")
-    total_posts = db.scalar(
-        select(func.count(Post.id)).where(func.lower(Post.subreddit) == normalized.lower())
-    ) or 0
+    filters = [func.lower(Post.subreddit) == normalized.lower()]
+    if date_from is not None:
+        filters.append(Post.created_at >= date_from)
+    if date_to is not None:
+        filters.append(Post.created_at <= date_to)
+
+    total_posts = db.scalar(select(func.count(Post.id)).where(*filters)) or 0
     post_stmt = (
         select(Post)
-        .where(func.lower(Post.subreddit) == normalized.lower())
+        .where(*filters)
         .order_by(Post.upvotes.desc(), Post.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -40,7 +48,7 @@ def get_subreddit_content(
     comment_count = db.scalar(
         select(func.count(Comment.id))
         .join(Post, Comment.post_id == Post.id)
-        .where(func.lower(Post.subreddit) == normalized.lower())
+        .where(*filters)
     ) or 0
 
     items = []

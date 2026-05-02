@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Comment, Post, Reply
 from app.db.session import get_db
-from app.schemas import ReplyItem, ReplyStatusUpdate
+from app.schemas import ReplyBulkUpdate, ReplyItem, ReplyStatusUpdate
 
 router = APIRouter(prefix="/replies", tags=["replies"])
 
@@ -67,6 +67,26 @@ def get_replies(
     return items
 
 
+@router.patch("/bulk/status")
+def bulk_update_reply_status(
+    payload: ReplyBulkUpdate,
+    db: Session = Depends(get_db),
+):
+    if payload.status is None:
+        raise HTTPException(status_code=400, detail="status is required")
+
+    replies = db.scalars(select(Reply).where(Reply.id.in_(payload.reply_ids))).all()
+    if not replies:
+        raise HTTPException(status_code=404, detail="No replies found")
+
+    status = payload.status.upper()
+    for reply in replies:
+        reply.status = status
+        db.add(reply)
+    db.commit()
+    return {"message": "Replies updated", "updated": len(replies), "status": status}
+
+
 @router.patch("/{reply_id}")
 def update_reply_status(
     reply_id: int,
@@ -77,7 +97,16 @@ def update_reply_status(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
-    reply.status = payload.status.upper()
+    if payload.status is None and payload.reply_text is None:
+        raise HTTPException(status_code=400, detail="status or reply_text is required")
+
+    if payload.status is not None:
+        reply.status = payload.status.upper()
+    if payload.reply_text is not None:
+        reply_text = payload.reply_text.strip()
+        if not reply_text:
+            raise HTTPException(status_code=400, detail="reply_text cannot be blank")
+        reply.reply_text = reply_text
     db.add(reply)
     db.commit()
     db.refresh(reply)

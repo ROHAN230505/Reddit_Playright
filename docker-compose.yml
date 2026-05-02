@@ -1,3 +1,5 @@
+name: ${COMPOSE_PROJECT_NAME:-improve-dashboard}
+
 services:
   backend:
     build: ./backend
@@ -37,12 +39,19 @@ services:
     image: redis:7
 
   dashboard:
-    build: ./dashboard
+    build:
+      context: ./dashboard
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
     env_file: .env
     environment:
       BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://backend:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      DASHBOARD_COOKIE_SECURE: ${DASHBOARD_COOKIE_SECURE:-false}
     depends_on:
       - backend
       - scheduler

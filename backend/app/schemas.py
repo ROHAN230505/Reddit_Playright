@@ -21,7 +21,13 @@ class TrackedSubredditItem(BaseModel):
 
 
 class ReplyStatusUpdate(BaseModel):
-    status: str
+    status: str | None = None
+    reply_text: str | None = Field(default=None, min_length=1)
+
+
+class ReplyBulkUpdate(BaseModel):
+    reply_ids: list[int] = Field(min_length=1)
+    status: str | None = None
 
 
 class ReplyItem(BaseModel):
@@ -42,7 +48,7 @@ class ReplyItem(BaseModel):
     post_upvotes: int
     post_comment_count: int
     subreddit: str
-    # Posting worker fields — optional/additive for backward compatibility.
+    # Posting worker fields - optional/additive for backward compatibility.
     target_type: str | None = None
     target_url: str | None = None
     reddit_post_id: str | None = None
@@ -110,6 +116,43 @@ class ScrapeRunListResponse(BaseModel):
     page_size: int
     total_runs: int
     runs: list[ScrapeRunItem]
+
+
+class DashboardSummary(BaseModel):
+    total_subreddits: int
+    total_posts: int
+    total_comments: int
+    reply_counts: dict[str, int]
+    promo_replies: int
+    normal_replies: int
+    promo_ratio: float
+    latest_scrape_time: datetime | None
+    latest_scrape_errors: list[ScrapeRunItem]
+    worker_counts: dict[str, int]
+
+
+class DashboardSearchResult(BaseModel):
+    kind: str
+    id: int
+    subreddit: str
+    title: str
+    text: str
+    url: str | None = None
+    status: str | None = None
+    includes_promo: bool | None = None
+    created_at: datetime
+
+
+class SubredditHealthItem(BaseModel):
+    subreddit: str
+    total_posts: int
+    total_comments: int
+    pending_replies: int
+    done_replies: int
+    promo_replies: int
+    latest_scrape_time: datetime | None
+    latest_scrape_status: str | None
+    error_count: int
 
 
 class OpportunityReplyItem(BaseModel):

@@ -10,7 +10,7 @@
 6. Generate Reddit-style draft replies with DeepSeek.
 7. Insert `sentx.ai` naturally in about 50% of relevant replies.
 8. Store posts, comments, replies, and tracked subreddits in the database.
-9. Display replies in a Streamlit dashboard with post/comment links.
+9. Display replies in a Next.js dashboard with post/comment links.
 10. Support copying reply drafts, marking replies done, and managing subreddit tracking.
 11. Run the stack with FastAPI, Celery, Redis, PostgreSQL, and Docker.
 
@@ -18,7 +18,7 @@
 
 1. Copy `.env.example` to `.env` and fill in your API keys.
 2. Start the stack with `docker compose up --build`.
-3. Open `http://localhost:8501` for the dashboard by default.
+3. Open `http://localhost:8501` for the Next.js dashboard by default.
 4. Open `http://localhost:8000/docs` for the API docs by default.
 5. If your host already uses those ports, set `DASHBOARD_PORT` and `API_PORT` in `.env` before starting Compose.
 
