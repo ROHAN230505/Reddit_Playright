@@ -12,12 +12,31 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const expectedToken = btoa(`${username}:${password}`);
-  if (request.cookies.get("dashboard_session")?.value === expectedToken) {
-    return NextResponse.next();
+  const token = request.cookies.get("dashboard_session")?.value;
+  if (token) {
+    try {
+      const [tokenUser, tokenPassword, expiresAt] = atob(token).split(":");
+      const expiresAtMs = Number(expiresAt);
+      if (
+        tokenUser === username &&
+        tokenPassword === password &&
+        Number.isFinite(expiresAtMs) &&
+        expiresAtMs > Date.now()
+      ) {
+        return NextResponse.next();
+      }
+    } catch {
+      // Invalid session cookies fall through to the login redirect.
+    }
   }
 
-  return NextResponse.redirect(new URL("/login", request.url));
+  if (pathname !== "/login") {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("dashboard_session");
+    return response;
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

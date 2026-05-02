@@ -39,10 +39,13 @@ export default function DashboardPage() {
   const [newSubreddit, setNewSubreddit] = useState("");
   const [query, setQuery] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
+  const [searchAttempted, setSearchAttempted] = useState(false);
   const [relevance, setRelevance] = useState<RelevanceFilter>("all");
   const [minPostUpvotes, setMinPostUpvotes] = useState(0);
   const [minCommentUpvotes, setMinCommentUpvotes] = useState(0);
   const [replySort, setReplySort] = useState("value");
+  const [replySearch, setReplySearch] = useState("");
+  const [replyPageSize, setReplyPageSize] = useState(10);
   const [selectedReplyIds, setSelectedReplyIds] = useState<number[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -131,11 +134,18 @@ export default function DashboardPage() {
   async function runSearch() {
     if (globalSearch.trim().length < 2) {
       setSearchResults([]);
+      setSearchAttempted(false);
       return;
     }
     await runAction(async () => {
       setSearchResults(await api.search(globalSearch.trim()));
+      setSearchAttempted(true);
     }, "Search complete");
+  }
+
+  async function logout() {
+    await fetch("/api/login", { method: "DELETE" });
+    window.location.assign("/login");
   }
 
   async function runAction(action: () => Promise<unknown>, success: string) {
@@ -181,8 +191,11 @@ export default function DashboardPage() {
           );
         })}
       </nav>
-      <div className="border-t border-border p-4 text-xs text-muted">
-        Last scrape: {formatDate(summary?.latest_scrape_time)}
+      <div className="space-y-3 border-t border-border p-4">
+        <div className="text-xs text-muted">Last scrape: {formatDate(summary?.latest_scrape_time)}</div>
+        <Button variant="secondary" className="w-full" onClick={logout}>
+          Logout
+        </Button>
       </div>
     </aside>
   );
@@ -208,10 +221,15 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted">Selected scope: {selectedSubreddit ? `r/${selectedSubreddit}` : "All subreddits"}</p>
                 </div>
               </div>
-              <Button variant="secondary" onClick={refreshAll} disabled={loading || busy}>
-                <span className={loading ? "animate-spin" : ""}>R</span>
-                Refresh
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="secondary" onClick={refreshAll} disabled={loading || busy}>
+                  <span className={loading ? "animate-spin" : ""}>R</span>
+                  Refresh
+                </Button>
+                <Button variant="secondary" onClick={logout}>
+                  Logout
+                </Button>
+              </div>
             </div>
           </header>
 
@@ -231,11 +249,13 @@ export default function DashboardPage() {
               value={globalSearch}
               results={searchResults}
               busy={busy}
+              attempted={searchAttempted}
               onChange={setGlobalSearch}
               onSearch={runSearch}
               onClear={() => {
                 setGlobalSearch("");
                 setSearchResults([]);
+                setSearchAttempted(false);
               }}
             />
 
@@ -304,16 +324,28 @@ export default function DashboardPage() {
                 onMinPostUpvotes={setMinPostUpvotes}
                 onMinCommentUpvotes={setMinCommentUpvotes}
                 onReplySort={setReplySort}
+                replySearch={replySearch}
+                replyPageSize={replyPageSize}
+                onReplySearch={setReplySearch}
+                onReplyPageSize={setReplyPageSize}
                 onSelectedReplyIds={setSelectedReplyIds}
                 onApprove={(reply) => runAction(() => api.updateReply(reply.reply_id, { status: "APPROVED", reply_text: reply.reply_text }), "Draft approved for posting")}
                 onDone={(reply, text) => runAction(() => api.updateReply(reply.reply_id, { status: "DONE", reply_text: text }), "Reply marked done")}
                 onSave={(reply, text) => runAction(() => api.updateReply(reply.reply_id, { reply_text: text }), "Draft saved")}
-                onDismiss={(reply) => runAction(() => api.updateReply(reply.reply_id, { status: "DISMISSED" }), "Reply dismissed")}
+                onDismiss={(reply) => {
+                  if (window.confirm(`Dismiss reply #${reply.reply_id}?`)) {
+                    runAction(() => api.updateReply(reply.reply_id, { status: "DISMISSED" }), "Reply dismissed");
+                  }
+                }}
                 onRetry={(reply) => runAction(() => api.updateReply(reply.reply_id, { status: "APPROVED" }), "Failed reply re-approved")}
-                onBulk={(status) => runAction(async () => {
-                  await api.bulkUpdateReplies(selectedReplyIds, status);
-                  setSelectedReplyIds([]);
-                }, `Bulk updated ${selectedReplyIds.length} replies`)}
+                onBulk={(status) => {
+                  if (window.confirm(`Update ${selectedReplyIds.length} selected replies to ${status}?`)) {
+                    runAction(async () => {
+                      await api.bulkUpdateReplies(selectedReplyIds, status);
+                      setSelectedReplyIds([]);
+                    }, `Bulk updated ${selectedReplyIds.length} replies`);
+                  }
+                }}
               />
             )}
 
@@ -368,6 +400,7 @@ function GlobalSearch(props: {
   value: string;
   results: DashboardSearchResult[];
   busy: boolean;
+  attempted: boolean;
   onChange: (value: string) => void;
   onSearch: () => void;
   onClear: () => void;
@@ -405,6 +438,9 @@ function GlobalSearch(props: {
             </div>
           ))}
         </div>
+      )}
+      {props.attempted && !props.busy && !props.results.length && (
+        <EmptyState title="No search matches" description="Try a subreddit name, post title, comment text, or reply draft phrase." />
       )}
     </Card>
   );
@@ -470,6 +506,9 @@ function SubredditSection(props: {
             </div>
           ))}
         </div>
+        {!props.subreddits.length && (
+          <EmptyState title="No saved subreddits" description="Add a subreddit name to start collecting posts, comments, and reply drafts." />
+        )}
         <RecentRuns runs={props.runs} />
       </Card>
       <SubredditHealthTable rows={props.healthRows} onSelect={props.onSelect} />
@@ -519,6 +558,11 @@ function SubredditHealthTable({ rows, onSelect }: { rows: SubredditHealthItem[];
           </tbody>
         </table>
       </div>
+      {!rows.length && (
+        <div className="p-4">
+          <EmptyState title="No health data yet" description="Track and scrape a subreddit to populate the health table." />
+        </div>
+      )}
     </Card>
   );
 }
@@ -560,7 +604,12 @@ function FeedSection(props: {
       </div>
       <div className="mt-4 space-y-3">
         {(props.content?.posts || []).map((post) => <PostCard key={post.id} post={post} />)}
-        {!props.content?.posts?.length && <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted">No posts found for this filter.</div>}
+        {!props.subreddits.length && (
+          <EmptyState title="No subreddits tracked" description="Add a subreddit before viewing the feed." />
+        )}
+        {!!props.subreddits.length && !props.content?.posts?.length && (
+          <EmptyState title="No posts found" description="Change the date filters or run a fresh scrape for this subreddit." />
+        )}
       </div>
       <Pagination page={props.page} totalPages={totalPages} total={props.content?.total_posts || 0} onPage={props.onPage} />
     </Card>
@@ -613,10 +662,14 @@ function RepliesSection(props: {
   minPostUpvotes: number;
   minCommentUpvotes: number;
   replySort: string;
+  replySearch: string;
+  replyPageSize: number;
   selectedReplyIds: number[];
   onMinPostUpvotes: (value: number) => void;
   onMinCommentUpvotes: (value: number) => void;
   onReplySort: (value: string) => void;
+  onReplySearch: (value: string) => void;
+  onReplyPageSize: (value: number) => void;
   onSelectedReplyIds: (value: number[]) => void;
   onApprove: (reply: ReplyItem) => void;
   onDone: (reply: ReplyItem, text: string) => void;
@@ -625,11 +678,37 @@ function RepliesSection(props: {
   onRetry: (reply: ReplyItem) => void;
   onBulk: (status: string) => void;
 }) {
-  const pendingIds = props.pending.map((item) => item.reply_id);
+  const search = props.replySearch.trim().toLowerCase();
+  const matchesSearch = (reply: ReplyItem) => {
+    if (!search) return true;
+    return [
+      reply.reply_text,
+      reply.comment_text,
+      reply.post_title,
+      reply.subreddit,
+      String(reply.reply_id),
+    ].some((value) => value.toLowerCase().includes(search));
+  };
+  const pending = props.pending.filter(matchesSearch);
+  const done = props.done.filter(matchesSearch);
+  const dismissed = props.dismissed.filter(matchesSearch);
+  const approved = props.approved.filter(matchesSearch);
+  const posting = props.posting.filter(matchesSearch);
+  const posted = props.posted.filter(matchesSearch);
+  const failed = props.failed.filter(matchesSearch);
+  const pendingIds = pending.map((item) => item.reply_id);
   return (
     <div className="space-y-5">
       <Card className="p-4">
-        <div className="grid gap-3 lg:grid-cols-5">
+        <div className="grid gap-3 lg:grid-cols-6">
+          <div className="lg:col-span-2">
+            <label className="mb-1 block text-xs font-semibold uppercase text-muted">Search replies</label>
+            <Input
+              value={props.replySearch}
+              onChange={(event) => props.onReplySearch(event.target.value)}
+              placeholder="Search draft, comment, title, subreddit, or ID"
+            />
+          </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase text-muted">Sort</label>
             <Select value={props.replySort} onChange={(event) => props.onReplySort(event.target.value)}>
@@ -647,51 +726,70 @@ function RepliesSection(props: {
             <label className="mb-1 block text-xs font-semibold uppercase text-muted">Min comment upvotes</label>
             <Input type="number" min={0} value={props.minCommentUpvotes} onChange={(event) => props.onMinCommentUpvotes(Number(event.target.value))} />
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-muted">Page size</label>
+            <Select value={String(props.replyPageSize)} onChange={(event) => props.onReplyPageSize(Number(event.target.value))}>
+              <option value="5">5 replies</option>
+              <option value="10">10 replies</option>
+              <option value="25">25 replies</option>
+              <option value="50">50 replies</option>
+            </Select>
+          </div>
           <Button
             className="self-end"
             variant="secondary"
             onClick={() => props.onSelectedReplyIds(props.selectedReplyIds.length === pendingIds.length ? [] : pendingIds)}
+            disabled={!pendingIds.length}
           >
             {props.selectedReplyIds.length === pendingIds.length ? "Clear selection" : "Select filtered"}
           </Button>
-          <div className="grid grid-cols-3 gap-2 self-end">
+          <div className="grid grid-cols-3 gap-2 self-end lg:col-span-2">
             <Button disabled={props.busy || !props.selectedReplyIds.length} onClick={() => props.onBulk("APPROVED")}>Bulk approve</Button>
             <Button disabled={props.busy || !props.selectedReplyIds.length} variant="secondary" onClick={() => props.onBulk("DONE")}>Bulk done</Button>
             <Button disabled={props.busy || !props.selectedReplyIds.length} variant="secondary" onClick={() => props.onBulk("DISMISSED")}>Dismiss</Button>
           </div>
         </div>
-        <div className="mt-3 text-sm text-muted">{props.selectedReplyIds.length} selected from {props.pending.length} filtered pending replies.</div>
+        <div className="mt-3 text-sm text-muted">{props.selectedReplyIds.length} selected from {pending.length} matching pending replies.</div>
       </Card>
       <ReplyGroup
         title="Pending promotional replies"
-        replies={props.pending.filter((item) => item.includes_promo)}
+        replies={pending.filter((item) => item.includes_promo)}
         busy={props.busy}
+        pageSize={props.replyPageSize}
         selectedReplyIds={props.selectedReplyIds}
         onSelectedReplyIds={props.onSelectedReplyIds}
         onApprove={props.onApprove}
-            onDone={props.onDone}
-            onSave={props.onSave}
-            onDismiss={props.onDismiss}
-          />
+        onDone={props.onDone}
+        onSave={props.onSave}
+        onDismiss={props.onDismiss}
+      />
       <ReplyGroup
         title="Pending normal replies"
-        replies={props.pending.filter((item) => !item.includes_promo)}
+        replies={pending.filter((item) => !item.includes_promo)}
         busy={props.busy}
+        pageSize={props.replyPageSize}
         selectedReplyIds={props.selectedReplyIds}
         onSelectedReplyIds={props.onSelectedReplyIds}
         onApprove={props.onApprove}
-            onDone={props.onDone}
-            onSave={props.onSave}
-            onDismiss={props.onDismiss}
-          />
-      <QueueGroup title="Posting queue" groups={[["Approved", props.approved], ["Posting", props.posting], ["Failed", props.failed], ["Posted", props.posted]]} busy={props.busy} onRetry={props.onRetry} />
-      <ReplyGroup title="Dismissed replies" replies={props.dismissed} busy={props.busy} doneOnly selectedReplyIds={[]} onSelectedReplyIds={() => {}} onApprove={props.onApprove} onDone={props.onDone} onSave={props.onSave} onDismiss={props.onDismiss} />
-      <ReplyGroup title="Done replies" replies={props.done} busy={props.busy} doneOnly selectedReplyIds={[]} onSelectedReplyIds={() => {}} onApprove={props.onApprove} onDone={props.onDone} onSave={props.onSave} onDismiss={props.onDismiss} />
+        onDone={props.onDone}
+        onSave={props.onSave}
+        onDismiss={props.onDismiss}
+      />
+      <QueueGroup title="Posting queue" groups={[["Approved", approved], ["Posting", posting], ["Failed", failed], ["Posted", posted]]} busy={props.busy} pageSize={props.replyPageSize} onRetry={props.onRetry} />
+      <ReplyGroup title="Dismissed replies" replies={dismissed} busy={props.busy} pageSize={props.replyPageSize} doneOnly selectedReplyIds={[]} onSelectedReplyIds={() => {}} onApprove={props.onApprove} onDone={props.onDone} onSave={props.onSave} onDismiss={props.onDismiss} />
+      <ReplyGroup title="Done replies" replies={done} busy={props.busy} pageSize={props.replyPageSize} doneOnly selectedReplyIds={[]} onSelectedReplyIds={() => {}} onApprove={props.onApprove} onDone={props.onDone} onSave={props.onSave} onDismiss={props.onDismiss} />
     </div>
   );
 }
 
-function ReplyGroup({ title, replies, busy, doneOnly, selectedReplyIds, onSelectedReplyIds, onApprove, onDone, onSave, onDismiss }: { title: string; replies: ReplyItem[]; busy: boolean; doneOnly?: boolean; selectedReplyIds: number[]; onSelectedReplyIds: (value: number[]) => void; onApprove: (reply: ReplyItem) => void; onDone: (reply: ReplyItem, text: string) => void; onSave: (reply: ReplyItem, text: string) => void; onDismiss: (reply: ReplyItem) => void }) {
+function ReplyGroup({ title, replies, busy, pageSize, doneOnly, selectedReplyIds, onSelectedReplyIds, onApprove, onDone, onSave, onDismiss }: { title: string; replies: ReplyItem[]; busy: boolean; pageSize: number; doneOnly?: boolean; selectedReplyIds: number[]; onSelectedReplyIds: (value: number[]) => void; onApprove: (reply: ReplyItem) => void; onDone: (reply: ReplyItem, text: string) => void; onSave: (reply: ReplyItem, text: string) => void; onDismiss: (reply: ReplyItem) => void }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(replies.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibleReplies = replies.slice((safePage - 1) * pageSize, safePage * pageSize);
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, replies.length]);
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -699,7 +797,7 @@ function ReplyGroup({ title, replies, busy, doneOnly, selectedReplyIds, onSelect
         <Badge>{replies.length}</Badge>
       </div>
       <div className="grid gap-3 xl:grid-cols-2">
-        {replies.map((reply) => (
+        {visibleReplies.map((reply) => (
           <ReplyCard
             key={reply.reply_id}
             reply={reply}
@@ -717,7 +815,10 @@ function ReplyGroup({ title, replies, busy, doneOnly, selectedReplyIds, onSelect
           />
         ))}
       </div>
-      {!replies.length && <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">Nothing here yet.</div>}
+      {!replies.length && <EmptyState title="No replies in this view" description="Adjust the filters or search query to show more replies." />}
+      {replies.length > pageSize && (
+        <Pagination page={safePage} totalPages={totalPages} total={replies.length} onPage={setPage} />
+      )}
     </Card>
   );
 }
@@ -760,32 +861,49 @@ function ReplyCard({ reply, busy, doneOnly, selected, onSelected, onApprove, onD
   );
 }
 
-function QueueGroup({ title, groups, busy, onRetry }: { title: string; groups: [string, ReplyItem[]][]; busy: boolean; onRetry: (reply: ReplyItem) => void }) {
+function QueueGroup({ title, groups, busy, pageSize, onRetry }: { title: string; groups: [string, ReplyItem[]][]; busy: boolean; pageSize: number; onRetry: (reply: ReplyItem) => void }) {
   return (
     <Card className="p-4">
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         {groups.map(([label, items]) => (
-          <div key={label} className="rounded-lg border border-border bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="font-medium">{label}</div>
-              <Badge>{items.length}</Badge>
-            </div>
-            <div className="space-y-2">
-              {items.slice(0, 8).map((item) => (
-                <div key={item.reply_id} className="rounded-md bg-slate-50 p-3 text-sm">
-                  <div className="font-medium">#{item.reply_id} r/{item.subreddit}</div>
-                  <p className="mt-1 line-clamp-2 text-muted">{item.reply_text}</p>
-                  {item.posting_error && <div className="mt-2 rounded bg-red-50 p-2 text-xs text-danger">{item.posting_error}</div>}
-                  {label === "Failed" && <Button className="mt-2" size="sm" variant="secondary" onClick={() => onRetry(item)} disabled={busy}>Retry</Button>}
-                </div>
-              ))}
-              {!items.length && <div className="py-4 text-center text-sm text-muted">Empty</div>}
-            </div>
-          </div>
+          <QueueBucket key={label} label={label} items={items} busy={busy} pageSize={pageSize} onRetry={onRetry} />
         ))}
       </div>
     </Card>
+  );
+}
+
+function QueueBucket({ label, items, busy, pageSize, onRetry }: { label: string; items: ReplyItem[]; busy: boolean; pageSize: number; onRetry: (reply: ReplyItem) => void }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibleItems = items.slice((safePage - 1) * pageSize, safePage * pageSize);
+  useEffect(() => {
+    setPage(1);
+  }, [items.length, pageSize]);
+
+  return (
+    <div className="rounded-lg border border-border bg-white p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="font-medium">{label}</div>
+        <Badge>{items.length}</Badge>
+      </div>
+      <div className="space-y-2">
+        {visibleItems.map((item) => (
+          <div key={item.reply_id} className="rounded-md bg-slate-50 p-3 text-sm">
+            <div className="font-medium">#{item.reply_id} r/{item.subreddit}</div>
+            <p className="mt-1 line-clamp-2 text-muted">{item.reply_text}</p>
+            {item.posting_error && <div className="mt-2 rounded bg-red-50 p-2 text-xs text-danger">{item.posting_error}</div>}
+            {label === "Failed" && <Button className="mt-2" size="sm" variant="secondary" onClick={() => onRetry(item)} disabled={busy}>Retry</Button>}
+          </div>
+        ))}
+        {!items.length && <EmptyState title="Empty queue" description={`No ${label.toLowerCase()} replies right now.`} compact />}
+      </div>
+      {items.length > pageSize && (
+        <Pagination page={safePage} totalPages={totalPages} total={items.length} onPage={setPage} />
+      )}
+    </div>
   );
 }
 
@@ -797,12 +915,19 @@ function AnalyticsSection({ summary }: { summary: DashboardSummary | null }) {
     <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
       <Card className="p-4">
         <h2 className="text-lg font-semibold">Analytics</h2>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <RatioBar label="sentx.ai promotional replies" value={promo} total={total} className="bg-amber-500" />
-          <RatioBar label="Normal replies" value={normal} total={total} className="bg-teal-600" />
-          <RatioBar label="Pending replies" value={summary?.reply_counts?.PENDING || 0} total={Math.max(1, total)} className="bg-slate-800" />
-          <RatioBar label="Done replies" value={summary?.reply_counts?.DONE || 0} total={Math.max(1, total)} className="bg-green-600" />
-        </div>
+        {summary ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <RatioBar label="sentx.ai promotional replies" value={promo} total={total} className="bg-amber-500" />
+            <RatioBar label="Normal replies" value={normal} total={total} className="bg-teal-600" />
+            <RatioBar label="Pending replies" value={summary.reply_counts?.PENDING || 0} total={Math.max(1, total)} className="bg-slate-800" />
+            <RatioBar label="Done replies" value={summary.reply_counts?.DONE || 0} total={Math.max(1, total)} className="bg-green-600" />
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+        )}
       </Card>
       <Card className="p-4">
         <h2 className="text-lg font-semibold">Latest Errors</h2>
@@ -813,7 +938,7 @@ function AnalyticsSection({ summary }: { summary: DashboardSummary | null }) {
               <div className="mt-1 text-danger">{run.error_message}</div>
             </div>
           ))}
-          {!summary?.latest_scrape_errors?.length && <div className="text-sm text-muted">No scrape errors recorded.</div>}
+          {!summary?.latest_scrape_errors?.length && <EmptyState title="No scrape errors" description="Recent scrape runs have not recorded errors." compact />}
         </div>
       </Card>
     </div>
@@ -883,6 +1008,11 @@ function LogsSection({ runs, page, workerCounts, onPage }: { runs: ScrapeRunList
             </tbody>
           </table>
         </div>
+        {!runs?.runs?.length && (
+          <div className="p-4">
+            <EmptyState title="No scrape logs" description="Scrape runs will appear here after jobs are queued or completed." />
+          </div>
+        )}
         <Pagination page={page} totalPages={totalPages} total={runs?.total_runs || 0} onPage={onPage} />
       </Card>
     </div>
@@ -904,8 +1034,17 @@ function RecentRuns({ runs }: { runs: ScrapeRun[] }) {
             {run.error_message && <div className="mt-2 text-xs text-danger">{run.error_message}</div>}
           </div>
         ))}
-        {!runs.length && <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted">No scrape runs yet.</div>}
+        {!runs.length && <EmptyState title="No scrape runs yet" description="Run a selected or full scrape to see job status here." compact />}
       </div>
+    </div>
+  );
+}
+
+function EmptyState({ title, description, compact }: { title: string; description: string; compact?: boolean }) {
+  return (
+    <div className={`rounded-md border border-dashed border-border bg-slate-50 text-center ${compact ? "p-4" : "p-8"}`}>
+      <div className="text-sm font-medium text-slate-800">{title}</div>
+      <div className="mt-1 text-sm text-muted">{description}</div>
     </div>
   );
 }
