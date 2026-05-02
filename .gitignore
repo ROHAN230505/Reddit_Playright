@@ -21,3 +21,4 @@ worker-screenshots/
 *.sqlite
 backend/reddit_ai.db
 backend/tests/_test.sqlite
+deploy-source.tar.gz
