@@ -1,16 +1,19 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy import inspect, text
 
 from app.config import settings
 from app.db import models  # noqa: F401
 from app.db.session import Base, engine
+from app.routes.dashboard import router as dashboard_router
 from app.routes.fetch import router as fetch_router
 from app.routes.replies import router as replies_router
 from app.routes.scrape_runs import router as scrape_runs_router
 from app.routes.subreddits import router as subreddits_router
 from app.routes.tracked_subreddits import router as tracked_subreddits_router
 from app.routes.worker import router as worker_router
+
 
 def _ensure_runtime_columns():
     inspector = inspect(engine)
@@ -85,6 +88,14 @@ Base.metadata.create_all(bind=engine)
 _ensure_runtime_columns()
 
 app = FastAPI(title=settings.app_name)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(dashboard_router)
 app.include_router(fetch_router)
 app.include_router(replies_router)
 app.include_router(scrape_runs_router)
