@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Comment, Post, Reply
 from app.db.session import get_db
 from app.schemas import ReplyBulkUpdate, ReplyItem, ReplyStatusUpdate
+from app.services.processor import generate_reply, should_insert_promo
 
 router = APIRouter(prefix="/replies", tags=["replies"])
 
@@ -85,6 +86,58 @@ def bulk_update_reply_status(
         db.add(reply)
     db.commit()
     return {"message": "Replies updated", "updated": len(replies), "status": status}
+
+
+@router.post("/regenerate")
+def regenerate_replies(
+    status: str = Query(default="PENDING"),
+    limit: int = Query(default=200, ge=1, le=1000),
+    reroll_promo: bool = Query(default=True),
+    db: Session = Depends(get_db),
+):
+    """Re-run the LLM on all replies in a given status, with the current prompt
+    + post-processor. Useful after a prompt change to refresh stale drafts.
+
+    - status: which bucket to refresh (default PENDING).
+    - reroll_promo: if True, re-randomizes whether each reply includes a promo
+      (per the current PROMO_RATIO). If False, preserves the existing flag.
+    """
+    stmt = (
+        select(Reply)
+        .join(Reply.comment)
+        .where(Reply.status == status.upper())
+        .order_by(Reply.id.asc())
+        .limit(limit)
+    )
+    replies = db.scalars(stmt).all()
+
+    refreshed = 0
+    failed: list[dict] = []
+    for reply in replies:
+        comment = reply.comment
+        if not comment or not comment.text:
+            failed.append({"reply_id": reply.id, "error": "missing comment text"})
+            continue
+        include_promo = should_insert_promo() if reroll_promo else bool(reply.includes_promo)
+        try:
+            new_text = generate_reply(comment.text, include_promo)
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"reply_id": reply.id, "error": str(exc)[:200]})
+            continue
+        if not new_text:
+            failed.append({"reply_id": reply.id, "error": "LLM returned empty text"})
+            continue
+        reply.reply_text = new_text
+        reply.includes_promo = include_promo
+        db.add(reply)
+        refreshed += 1
+    db.commit()
+    return {
+        "scanned": len(replies),
+        "refreshed": refreshed,
+        "failed_count": len(failed),
+        "failed_sample": failed[:5],
+    }
 
 
 @router.patch("/{reply_id}")
