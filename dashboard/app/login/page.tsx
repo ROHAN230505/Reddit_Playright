@@ -31,9 +31,26 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm p-6">
         <h1 className="text-xl font-semibold">Dashboard Login</h1>
         <p className="mt-1 text-sm text-muted">Sign in to Reddit Reply Ops.</p>
-        <form className="mt-5 space-y-3" onSubmit={submit}>
-          <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Username" autoComplete="username" />
-          <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" autoComplete="current-password" />
+        <form className="mt-5 space-y-3" onSubmit={submit} autoComplete="off">
+          <Input
+            id="dashboard-username"
+            name="dashboard-username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="Username"
+            autoComplete="off"
+            suppressHydrationWarning
+          />
+          <Input
+            id="dashboard-password"
+            name="dashboard-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password"
+            type="password"
+            autoComplete="new-password"
+            suppressHydrationWarning
+          />
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>}
           <Button className="w-full" disabled={busy || !username || !password}>
             {busy ? "Signing in..." : "Sign In"}

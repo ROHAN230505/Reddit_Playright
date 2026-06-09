@@ -1,10 +1,13 @@
 """CLI entrypoint:  python -m playwright_worker <command>
 
 Commands:
-    login       — open a browser so you can log into Reddit once. The
-                  session is persisted in USER_DATA_DIR for later runs.
-    run --once  — claim and process a single job, then exit.
-    run         — continuous polling loop (Ctrl-C to stop).
+    login                 — open a browser so you can log into Reddit once.
+    glp-login             — open a browser so you can log into GLP once and
+                            save storage_state for the scraper.
+    run [--once]          — claim and process job(s). Dispatches to the right
+                            poster based on each job's `platform` field.
+    run --platform=glp    — informational; the runner already dispatches per-job,
+                            but this lets ops scope a worker to one platform.
 """
 
 from __future__ import annotations
@@ -25,6 +28,37 @@ def _setup_logging() -> None:
     )
 
 
+def _run_glp_login_helper(user_data_dir: str, channel: str | None) -> None:
+    """Open a non-headless GLP login page so the operator can sign in once.
+    The persistent context preserves cookies for subsequent scraper/poster runs."""
+    import os
+    from patchright.sync_api import sync_playwright
+
+    os.makedirs(user_data_dir, exist_ok=True)
+    with sync_playwright() as p:
+        launch_kwargs: dict = {
+            "user_data_dir": user_data_dir,
+            "headless": False,
+            "args": ["--no-default-browser-check", "--no-first-run"],
+        }
+        if channel:
+            launch_kwargs["channel"] = channel
+        ctx = p.chromium.launch_persistent_context(**launch_kwargs)
+        page = ctx.new_page()
+        page.goto("https://www.godlikeproductions.com/login.php")
+        print(
+            "Browser is open. Sign in to GLP, then close the window when done. "
+            "Cookies will persist in the profile dir for the worker to reuse."
+        )
+        # Block until the operator closes the last page.
+        try:
+            while ctx.pages:
+                page.wait_for_timeout(1000)
+        except Exception:  # noqa: BLE001
+            pass
+        ctx.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     _setup_logging()
     config = WorkerConfig.from_env()
@@ -33,9 +67,20 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("login", help="Open a browser to manually sign in to Reddit.")
+    sub.add_parser("glp-login", help="Open a browser to manually sign in to GLP.")
 
     run_p = sub.add_parser("run", help="Run the posting worker.")
     run_p.add_argument("--once", action="store_true", help="Process one job then exit.")
+    run_p.add_argument(
+        "--platform",
+        choices=("reddit", "glp", "chan"),
+        default=None,
+        help=(
+            "Scope this worker to one platform. When set, the backend only hands "
+            "out jobs for that platform — e.g. --platform=chan posts only 4chan "
+            "replies and never touches Reddit/GLP. Defaults to env WORKER_PLATFORM."
+        ),
+    )
 
     args = parser.parse_args(argv)
 
@@ -43,11 +88,19 @@ def main(argv: list[str] | None = None) -> int:
         run_login_helper(config.user_data_dir, config.browser_channel)
         return 0
 
+    if args.command == "glp-login":
+        _run_glp_login_helper(config.user_data_dir, config.browser_channel)
+        return 0
+
     if args.command == "run":
+        import os
+        platform = args.platform or (os.getenv("WORKER_PLATFORM") or "").strip().lower() or None
+        if platform:
+            logging.getLogger(__name__).info("Worker scoped to platform=%s", platform)
         if args.once:
-            did_work = run_once(config)
+            did_work = run_once(config, platform=platform)
             return 0 if did_work else 0  # success either way; absence of work isn't an error
-        run_loop(config)
+        run_loop(config, platform=platform)
         return 0
 
     parser.print_help()

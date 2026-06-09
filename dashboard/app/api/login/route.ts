@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
     secure: process.env.DASHBOARD_COOKIE_SECURE === "true",
     path: "/",
     maxAge,
+    // Set an explicit absolute expiry alongside maxAge so the cookie is
+    // treated as persistent (survives browser restart) across all browsers.
+    expires: new Date(expiresAt),
   });
   return response;
 }

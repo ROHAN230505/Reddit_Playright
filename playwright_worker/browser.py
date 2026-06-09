@@ -17,7 +17,11 @@ import logging
 import os
 from contextlib import contextmanager
 
-from playwright.sync_api import BrowserContext, sync_playwright
+# Use patchright (the hardened-stealth Playwright fork) — it's what the
+# multi-account path uses, and crucially its Chromium is the one registered in
+# the Docker image (`patchright install chromium`). Plain `playwright`'s browser
+# binary is not installed, so importing it here would fail at launch.
+from patchright.sync_api import BrowserContext, sync_playwright
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +38,11 @@ def persistent_context(
             "user_data_dir": user_data_dir,
             "headless": headless,
             "viewport": {"width": 1280, "height": 900},
+            # NOTE: patchright applies AutomationControlled masking itself —
+            # duplicating --disable-blink-features here breaks its stealth.
             "args": [
-                "--disable-blink-features=AutomationControlled",
+                "--no-default-browser-check",
+                "--no-first-run",
             ],
         }
         if channel:

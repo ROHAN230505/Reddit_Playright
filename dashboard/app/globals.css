@@ -12,8 +12,10 @@
 
 body {
   margin: 0;
-  background: #f7f8fb;
-  color: #17202f;
+  background: #f6f7f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
