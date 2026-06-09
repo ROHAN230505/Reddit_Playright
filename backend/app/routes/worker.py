@@ -1,10 +1,12 @@
+import random
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Reply
+from app.config import settings
+from app.db.models import Comment, RedditAccount, Reply
 from app.db.session import get_db
 from app.schemas import (
     WorkerClaimRequest,
@@ -61,16 +63,86 @@ def _job_payload(reply: Reply) -> WorkerJobItem:
         posting_claimed_by=reply.posting_claimed_by,
         approved_at=None,
         created_at=reply.created_at,
+        platform=reply.platform or "reddit",
+        platform_post_id=reply.platform_post_id,
+        platform_comment_id=reply.platform_comment_id,
+        platform_section=reply.platform_section,
     )
+
+
+def _account_rate_limited(
+    db: Session, account: RedditAccount, now: datetime
+) -> tuple[bool, str | None]:
+    """Return (is_limited, reason) for the given account at `now`."""
+    # Cooldown timer.
+    if account.next_eligible_at and account.next_eligible_at > now:
+        wait = int((account.next_eligible_at - now).total_seconds())
+        return True, f"cooldown {wait}s remaining"
+
+    # Hourly cap.
+    hourly_cap = account.posts_per_hour_limit or 4
+    posts_last_hour = db.scalar(
+        select(func.count(Reply.id)).where(
+            Reply.posting_account_id == account.id,
+            Reply.posted_at != None,  # noqa: E711
+            Reply.posted_at >= now - timedelta(hours=1),
+        )
+    ) or 0
+    if posts_last_hour >= hourly_cap:
+        return True, f"hourly limit reached ({posts_last_hour}/{hourly_cap})"
+
+    # Daily cap.
+    daily_cap = account.posts_per_day_limit or 30
+    posts_last_day = db.scalar(
+        select(func.count(Reply.id)).where(
+            Reply.posting_account_id == account.id,
+            Reply.posted_at != None,  # noqa: E711
+            Reply.posted_at >= now - timedelta(days=1),
+        )
+    ) or 0
+    if posts_last_day >= daily_cap:
+        return True, f"daily limit reached ({posts_last_day}/{daily_cap})"
+
+    return False, None
+
+
+def _thread_at_cap(db: Session, reply: Reply, cap: int) -> bool:
+    """True if the 4chan thread this reply targets already has `cap` or more
+    replies POSTED or in-flight (POSTING). The thread is identified by the
+    reply's comment's post_id (one Post per chan thread)."""
+    comment = reply.comment
+    if comment is None or comment.post_id is None:
+        return False
+    count = db.scalar(
+        select(func.count(Reply.id))
+        .join(Comment, Reply.comment_id == Comment.id)
+        .where(
+            Comment.post_id == comment.post_id,
+            Reply.status.in_((STATUS_POSTED, STATUS_POSTING)),
+        )
+    ) or 0
+    return count >= cap
 
 
 @router.post("/claim", response_model=WorkerJobItem | None)
 def claim_next(payload: WorkerClaimRequest, db: Session = Depends(get_db)):
     """Atomically claim the next APPROVED reply for posting, or recover a
     stale POSTING claim that has exceeded ``stale_after_seconds``. Returns
-    null when no work is available."""
+    null when no work is available OR when the requesting account is rate-
+    limited (cooldown / hourly / daily caps)."""
     now = datetime.utcnow()
     cutoff = now - timedelta(seconds=payload.stale_after_seconds)
+
+    # If a worker identifies its account, enforce per-account rate limits
+    # BEFORE picking up work. Workers without account_id (legacy) bypass.
+    account = None
+    if payload.account_id is not None:
+        account = db.get(RedditAccount, payload.account_id)
+        if not account or not account.is_enabled:
+            return None
+        is_limited, _reason = _account_rate_limited(db, account, now)
+        if is_limited:
+            return None
 
     stmt = (
         select(Reply)
@@ -85,14 +157,38 @@ def claim_next(payload: WorkerClaimRequest, db: Session = Depends(get_db)):
             )
         )
         .order_by(Reply.posting_attempts.asc(), Reply.id.asc())
-        .limit(1)
+    )
+    # When the worker identifies its account, only hand out jobs for the
+    # matching platform — a Reddit account can't post to GLP and vice versa.
+    if account is not None:
+        stmt = stmt.where(Reply.platform == (account.platform or "reddit"))
+    # Explicit platform scope (e.g. a chan-only worker). Narrows further; never
+    # widens past the account filter above.
+    if payload.platform is not None:
+        stmt = stmt.where(Reply.platform == payload.platform)
+
+    # Per-thread cap (chan): skip candidates whose thread already has the max
+    # number of POSTED/POSTING replies, so we spread across threads instead of
+    # flooding one. We scan a bounded batch rather than limit(1) so a capped
+    # thread doesn't starve the worker.
+    effective_platform = payload.platform or (account.platform if account else None)
+    per_thread_cap = (
+        settings.chan_max_posts_per_thread if effective_platform == "chan" else 0
     )
 
     dialect = db.bind.dialect.name if db.bind is not None else ""
     if dialect == "postgresql":
         stmt = stmt.with_for_update(skip_locked=True)
 
-    reply = db.scalar(stmt)
+    if per_thread_cap and per_thread_cap > 0:
+        reply = None
+        for candidate in db.scalars(stmt.limit(50)):
+            if _thread_at_cap(db, candidate, per_thread_cap):
+                continue
+            reply = candidate
+            break
+    else:
+        reply = db.scalar(stmt.limit(1))
     if not reply:
         return None
 
@@ -101,7 +197,7 @@ def claim_next(payload: WorkerClaimRequest, db: Session = Depends(get_db)):
         # Don't mark as POSTING for unworkable rows — fail it instead so the
         # operator sees the issue in the dashboard rather than thrash on it.
         reply.status = STATUS_FAILED
-        reply.posting_error = "Reply has no resolvable Reddit target URL"
+        reply.posting_error = "Reply has no resolvable target URL"
         reply.posting_claimed_at = None
         reply.posting_claimed_by = None
         db.add(reply)
@@ -112,6 +208,8 @@ def claim_next(payload: WorkerClaimRequest, db: Session = Depends(get_db)):
     reply.posting_claimed_at = now
     reply.posting_claimed_by = payload.worker_name
     reply.posting_attempts = (reply.posting_attempts or 0) + 1
+    if payload.account_id is not None:
+        reply.posting_account_id = payload.account_id
     if not reply.target_url:
         reply.target_url = target_url
     if not reply.subreddit:
@@ -158,12 +256,28 @@ def mark_posted(
             ),
         )
 
+    now = datetime.utcnow()
     reply.status = STATUS_POSTED
-    reply.posted_at = datetime.utcnow()
+    reply.posted_at = now
     reply.posting_error = None
     if payload.posted_reddit_comment_id:
         reply.posted_reddit_comment_id = payload.posted_reddit_comment_id
+    if payload.posted_platform_comment_id:
+        reply.posted_platform_comment_id = payload.posted_platform_comment_id
+    if payload.posted_url:
+        reply.posted_url = payload.posted_url
     db.add(reply)
+
+    # Set the per-account cooldown so the next claim is throttled.
+    if reply.posting_account_id is not None:
+        account = db.get(RedditAccount, reply.posting_account_id)
+        if account is not None:
+            min_s = account.min_seconds_between_posts or 300
+            max_s = max(min_s, account.max_seconds_between_posts or 900)
+            jitter = random.uniform(min_s, max_s)
+            account.next_eligible_at = now + timedelta(seconds=jitter)
+            db.add(account)
+
     db.commit()
     db.refresh(reply)
     return {

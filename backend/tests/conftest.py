@@ -15,6 +15,11 @@ if TEST_DB_PATH.exists():
     TEST_DB_PATH.unlink()
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH.as_posix()}"
 
+# Default Fernet key so the accounts/proxies routes can encrypt during tests.
+if not os.environ.get("ACCOUNT_ENCRYPTION_KEY"):
+    from cryptography.fernet import Fernet  # noqa: E402
+    os.environ["ACCOUNT_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
 # Make `app` importable (the FastAPI package lives at backend/app/).
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 if str(BACKEND_ROOT) not in sys.path:

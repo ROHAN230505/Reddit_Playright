@@ -20,6 +20,10 @@ WORKDIR /app
 COPY requirements.txt /tmp/worker-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/worker-requirements.txt
 
+# Patchright is a hardened-stealth Playwright fork. It reuses the base
+# image's Chromium binary; this command only registers the patched runtime.
+RUN patchright install chromium || true
+
 # Copy the worker package into the image. We deliberately keep it scoped
 # to /app/playwright_worker so the existing repo layout maps cleanly into
 # the container without dragging the backend along.

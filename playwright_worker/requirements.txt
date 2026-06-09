@@ -1,2 +1,6 @@
-playwright==1.48.0
+# Playwright provided by the base Docker image (mcr.microsoft.com/playwright/python:v1.48.0-jammy);
+# we deliberately do NOT pin it here so patchright can pull in its own compatible playwright.
+patchright==1.59.1
 requests==2.32.5
+pyotp==2.9.0
+tf-playwright-stealth==1.1.2

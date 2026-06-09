@@ -18,6 +18,41 @@ def test_patch_reply_text_and_status(client, make_reply):
     assert done_items[0]["reply_text"] == "Edited draft"
 
 
+def test_posted_replies_newest_order_uses_posted_at_and_includes_posted_url(
+    client,
+    make_reply,
+    db_session,
+):
+    older_draft_newer_post = make_reply(status="POSTED")
+    newer_draft_older_post = make_reply(status="POSTED")
+
+    older_draft_newer_post.created_at = datetime(2026, 1, 1, 12, 0, 0)
+    older_draft_newer_post.posted_at = datetime(2026, 1, 10, 12, 0, 0)
+    older_draft_newer_post.posted_url = (
+        "https://www.reddit.com/r/test/comments/newer_posted/reply/"
+    )
+    newer_draft_older_post.created_at = datetime(2026, 1, 9, 12, 0, 0)
+    newer_draft_older_post.posted_at = datetime(2026, 1, 2, 12, 0, 0)
+    newer_draft_older_post.posted_url = (
+        "https://www.reddit.com/r/test/comments/older_posted/reply/"
+    )
+    db_session.add_all([older_draft_newer_post, newer_draft_older_post])
+    db_session.commit()
+
+    resp = client.get(
+        "/replies",
+        params={"status": "POSTED", "order": "newest", "limit": 2},
+    )
+
+    assert resp.status_code == 200
+    items = resp.json()
+    assert [item["reply_id"] for item in items] == [
+        older_draft_newer_post.id,
+        newer_draft_older_post.id,
+    ]
+    assert items[0]["posted_url"] == older_draft_newer_post.posted_url
+
+
 def test_dashboard_summary_counts_and_latest_errors(client, db_session):
     db_session.add(TrackedSubreddit(name="python"))
     post = Post(

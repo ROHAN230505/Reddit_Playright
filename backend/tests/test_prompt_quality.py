@@ -93,10 +93,19 @@ def test_promo_reply_rejects_specific_product_claims():
 
 
 def test_generate_reply_retries_then_falls_back(monkeypatch):
+    # 1st call: too long (rejected). 2nd call: short promo reply (accepted by
+    # length/cleanup but FAILS the naturalness judge — "weird movie ending"
+    # has nothing to do with AI tools). 3rd call: the naturalness judge itself
+    # returns NO. 4th call: a second promo attempt — same failure path.
+    # 5th call: the fallback non-promo reply that gets returned.
     calls = iter(
         [
             "Here's a natural reply: Honestly, " + ("too long " * 80),
             "sentx.ai handles it, game changer",
+            "NO",
+            "sentx.ai again",
+            "NO",
+            "weird ending — felt rushed to me too",
         ]
     )
 

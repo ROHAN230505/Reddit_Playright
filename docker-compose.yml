@@ -12,6 +12,12 @@ services:
 
   worker:
     build: ./backend
+    # GLP scraping drives Chromium headful (GLP_HEADLESS=0) to clear Cloudflare,
+    # which needs an X display. The entrypoint starts Xvfb and exports DISPLAY
+    # before exec'ing celery, so every prefork pool worker inherits it. Without
+    # a display, GLP's launch_persistent_context dies with "Target page/context/
+    # browser closed".
+    entrypoint: ["/app/docker-entrypoint-xvfb.sh"]
     command: celery -A worker.celery_app.celery worker --loglevel=info
     env_file: .env
     depends_on:
@@ -89,8 +95,39 @@ services:
       CLAIM_STALE_AFTER_SECONDS: ${CLAIM_STALE_AFTER_SECONDS:-600}
       HEADLESS: ${HEADLESS:-true}
       USE_OLD_REDDIT: ${USE_OLD_REDDIT:-true}
+      CHAN_PASS_TOKEN: ${CHAN_PASS_TOKEN:-}
+      CHAN_PASS_PIN: ${CHAN_PASS_PIN:-}
     volumes:
       - playwright_profile:/home/pwuser/.reddit-worker-profile
+      - ./worker-screenshots:/app/worker-screenshots
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # 4chan-only posting worker — opt-in via the `chan` profile. Scoped to
+  # platform=chan via WORKER_PLATFORM, so the backend only ever hands it 4chan
+  # replies; it can never claim or post Reddit/GLP jobs (no Reddit/GLP login is
+  # possible). 4chan posting is anonymous + Pass-cookie auth'd, so unlike the
+  # Reddit worker there's no login step. Run with:
+  #   docker compose --profile chan up -d chan_worker
+  # Uses its own profile volume so it never shares cookies with the Reddit worker.
+  chan_worker:
+    build: ./playwright_worker
+    profiles: ["chan"]
+    # The image ENTRYPOINT is `python -m playwright_worker`; this is just its args.
+    command: ["run", "--platform=chan"]
+    env_file: .env
+    environment:
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://backend:8000}
+      PLAYWRIGHT_WORKER_NAME: ${CHAN_WORKER_NAME:-chan-worker}
+      WORKER_PLATFORM: chan
+      POLL_INTERVAL_SECONDS: ${CHAN_POLL_INTERVAL_SECONDS:-30}
+      CLAIM_STALE_AFTER_SECONDS: ${CLAIM_STALE_AFTER_SECONDS:-600}
+      HEADLESS: ${HEADLESS:-true}
+      CHAN_PASS_TOKEN: ${CHAN_PASS_TOKEN:-}
+      CHAN_PASS_PIN: ${CHAN_PASS_PIN:-}
+    volumes:
+      - chan_profile:/home/pwuser/.reddit-worker-profile
       - ./worker-screenshots:/app/worker-screenshots
     depends_on:
       - backend
@@ -99,5 +136,6 @@ services:
 volumes:
   postgres_data:
   playwright_profile:
+  chan_profile:
   caddy_data:
   caddy_config:

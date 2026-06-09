@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  "/feed": "/analytics?tab=feed",
+  "/logs": "/analytics?tab=logs",
+  "/live": "/analytics?tab=worker",
+  "/accounts": "/settings?tab=accounts",
+  "/proxies": "/settings?tab=proxies",
+  "/subreddits": "/settings?tab=subreddits",
+  "/replies/live": "/settings?tab=queue",
+};
+
 export function middleware(request: NextRequest) {
   const username = process.env.DASHBOARD_USERNAME;
   const password = process.env.DASHBOARD_PASSWORD;
@@ -8,6 +18,11 @@ export function middleware(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.pathname;
+  const legacyTarget = LEGACY_ROUTE_REDIRECTS[pathname];
+  if (legacyTarget) {
+    return NextResponse.redirect(new URL(legacyTarget, request.url));
+  }
+
   if (pathname === "/login" || pathname.startsWith("/api/login")) {
     return NextResponse.next();
   }
@@ -31,9 +46,11 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname !== "/login") {
-    const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete("dashboard_session");
-    return response;
+    // Redirect unauthenticated requests to login. Do NOT delete the cookie
+    // here: a transient/prefetch request without the cookie would otherwise
+    // wipe an otherwise-valid session and force a re-login. Expired/invalid
+    // cookies are simply overwritten on the next successful login.
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();

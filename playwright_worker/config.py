@@ -23,6 +23,11 @@ class WorkerConfig:
     request_timeout_seconds: int
     use_old_reddit: bool
     submit_post_url_fallback_to_new: bool
+    # 4chan Pass — authenticates the browser context so posts skip the per-post
+    # reCAPTCHA. A Pass is bound to ONE IP at a time, so the worker re-auths
+    # (via the same proxied context) at bootstrap and again if a captcha appears.
+    chan_pass_token: str | None
+    chan_pass_pin: str | None
 
     @classmethod
     def from_env(cls) -> "WorkerConfig":
@@ -40,4 +45,6 @@ class WorkerConfig:
             submit_post_url_fallback_to_new=_bool(
                 os.getenv("FALLBACK_TO_NEW_REDDIT"), default=False
             ),
+            chan_pass_token=(os.getenv("CHAN_PASS_TOKEN") or "").strip() or None,
+            chan_pass_pin=(os.getenv("CHAN_PASS_PIN") or "").strip() or None,
         )
