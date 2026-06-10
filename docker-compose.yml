@@ -18,7 +18,7 @@ services:
     # a display, GLP's launch_persistent_context dies with "Target page/context/
     # browser closed".
     entrypoint: ["/app/docker-entrypoint-xvfb.sh"]
-    command: celery -A worker.celery_app.celery worker --loglevel=info
+    command: celery -A worker.celery_app.celery worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-20}
     env_file: .env
     depends_on:
       - db
@@ -62,6 +62,25 @@ services:
     depends_on:
       - backend
       - scheduler
+
+  instagram:
+    image: reddit-reply-draft-instagram
+    env_file: .env
+    environment:
+      DATABASE_URL: ${INSTAGRAM_DATABASE_URL:-}
+      DATABASE_URL_SYNC: ${INSTAGRAM_DATABASE_URL_SYNC:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      SECRET_KEY: ${INSTAGRAM_SECRET_KEY:-}
+      BROWSER_HEADLESS: ${INSTAGRAM_BROWSER_HEADLESS:-true}
+      LOG_LEVEL: ${INSTAGRAM_LOG_LEVEL:-INFO}
+    ports:
+      - "${INSTAGRAM_PORT:-8600}:8000"
+    volumes:
+      - instagram_browser_state:/app/browser_state
+      - instagram_screenshots:/app/screenshots
+    depends_on:
+      - db
+    restart: unless-stopped
 
   https_proxy:
     image: caddy:2
@@ -137,5 +156,7 @@ volumes:
   postgres_data:
   playwright_profile:
   chan_profile:
+  instagram_browser_state:
+  instagram_screenshots:
   caddy_data:
   caddy_config:
