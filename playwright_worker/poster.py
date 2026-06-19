@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import re
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
@@ -27,6 +29,17 @@ class PostingError(RuntimeError):
 
 class CaptchaEncountered(PostingError):
     """Posting blocked by a CAPTCHA — leave retry possible."""
+
+
+@dataclass(frozen=True)
+class RedditWarmupConfig:
+    enabled: bool = True
+    pre_reply_delay_min_seconds: float = 3
+    pre_reply_delay_max_seconds: float = 9
+    read_delay_min_seconds: float = 4
+    read_delay_max_seconds: float = 12
+    scroll_steps_min: int = 2
+    scroll_steps_max: int = 5
 
 
 def to_old_reddit(url: str) -> str:
@@ -93,15 +106,92 @@ def _detect_login_required(page: Page) -> bool:
     return False
 
 
-def post_top_level_comment(page: Page, target_url: str, text: str) -> None:
-    """Comment on a Reddit post (top-level). target_url should be the post URL."""
-    page.goto(target_url, wait_until="domcontentloaded", timeout=45_000)
+def _detect_network_block(page: Page) -> bool:
+    try:
+        title = (page.title() or "").lower()
+    except Exception:  # noqa: BLE001
+        title = ""
+    try:
+        body_text = page.locator("body").first.inner_text(timeout=1500).lower()
+    except Exception:  # noqa: BLE001
+        body_text = ""
+    return (
+        title == "blocked"
+        or "blocked by network security" in body_text
+        or "you've been blocked" in body_text
+        or "whoa there, pardner" in body_text
+    )
+
+
+def _raise_if_blocked_or_logged_out(page: Page) -> None:
+    if _detect_network_block(page):
+        raise PostingError(
+            "blocked_by_reddit: Reddit returned a network-security block page. "
+            "Rotate/fix the proxy and refresh the account session before retrying."
+        )
     if _detect_login_required(page):
         raise PostingError(
-            "Not logged in to old.reddit.com. Run `python -m playwright_worker login` first."
+            "not_logged_in: Reddit session is not valid. Refresh cookies or run the "
+            "manual login helper before retrying."
         )
     if _detect_captcha(page):
         raise CaptchaEncountered("CAPTCHA challenge appeared — manual intervention needed.")
+
+
+def _bounded_delay(page: Page, minimum: float, maximum: float) -> None:
+    low = max(0.0, float(minimum))
+    high = max(low, float(maximum))
+    page.wait_for_timeout(int(random.uniform(low, high) * 1000))
+
+
+def _human_scroll(page: Page, config: RedditWarmupConfig) -> None:
+    if not config.enabled:
+        return
+    min_steps = max(0, int(config.scroll_steps_min))
+    max_steps = max(min_steps, int(config.scroll_steps_max))
+    for _ in range(random.randint(min_steps, max_steps)):
+        delta = random.randint(250, 900)
+        page.mouse.wheel(0, delta)
+        _bounded_delay(page, 0.6, 1.8)
+    if random.random() < 0.35:
+        page.mouse.wheel(0, -random.randint(120, 420))
+        _bounded_delay(page, 0.5, 1.4)
+
+
+def _warmup_before_reply(page: Page, target_url: str, config: RedditWarmupConfig) -> None:
+    if not config.enabled:
+        return
+
+    parsed = urlparse(target_url)
+    subreddit_url = None
+    parts = [p for p in parsed.path.split("/") if p]
+    if len(parts) >= 2 and parts[0].lower() == "r":
+        subreddit_url = urlunparse(
+            parsed._replace(path=f"/r/{parts[1]}/", params="", query="", fragment="")
+        )
+
+    warmup_url = subreddit_url or "https://old.reddit.com/"
+    try:
+        page.goto(warmup_url, wait_until="domcontentloaded", timeout=30_000)
+        _raise_if_blocked_or_logged_out(page)
+        _bounded_delay(
+            page,
+            config.pre_reply_delay_min_seconds,
+            config.pre_reply_delay_max_seconds,
+        )
+        _human_scroll(page, config)
+    except CaptchaEncountered:
+        raise
+    except PostingError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Reddit warmup failed before target navigation: %s", exc)
+
+
+def post_top_level_comment(page: Page, target_url: str, text: str) -> None:
+    """Comment on a Reddit post (top-level). target_url should be the post URL."""
+    page.goto(target_url, wait_until="domcontentloaded", timeout=45_000)
+    _raise_if_blocked_or_logged_out(page)
 
     page.wait_for_selector(".commentarea form.usertext textarea[name='text']", timeout=20_000)
     textarea = page.locator(".commentarea form.usertext textarea[name='text']").first
@@ -140,12 +230,7 @@ def reply_to_comment(page: Page, target_url: str, text: str) -> None:
         raise PostingError(f"Could not parse comment id from URL: {target_url}")
 
     page.goto(target_url, wait_until="domcontentloaded", timeout=45_000)
-    if _detect_login_required(page):
-        raise PostingError(
-            "Not logged in to old.reddit.com. Run `python -m playwright_worker login` first."
-        )
-    if _detect_captcha(page):
-        raise CaptchaEncountered("CAPTCHA challenge appeared — manual intervention needed.")
+    _raise_if_blocked_or_logged_out(page)
 
     selector = f"#thing_t1_{comment_id}"
     try:
@@ -196,6 +281,7 @@ def post_reply(
     *,
     use_old_reddit: bool,
     screenshot_dir: str,
+    warmup_config: RedditWarmupConfig | None = None,
 ) -> dict:
     """Drive a fresh page in the persistent context to post `job`.
 
@@ -215,6 +301,16 @@ def post_reply(
 
     page = context.new_page()
     try:
+        config = warmup_config or RedditWarmupConfig(enabled=False)
+        _warmup_before_reply(page, effective_url, config)
+        page.goto(effective_url, wait_until="domcontentloaded", timeout=45_000)
+        _raise_if_blocked_or_logged_out(page)
+        _human_scroll(page, config)
+        _bounded_delay(
+            page,
+            config.read_delay_min_seconds if config.enabled else 0,
+            config.read_delay_max_seconds if config.enabled else 0,
+        )
         if target_type == "post":
             post_top_level_comment(page, effective_url, text)
         else:

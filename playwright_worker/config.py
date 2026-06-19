@@ -23,6 +23,13 @@ class WorkerConfig:
     request_timeout_seconds: int
     use_old_reddit: bool
     submit_post_url_fallback_to_new: bool
+    reddit_warmup_enabled: bool
+    reddit_pre_reply_delay_min_seconds: float
+    reddit_pre_reply_delay_max_seconds: float
+    reddit_read_delay_min_seconds: float
+    reddit_read_delay_max_seconds: float
+    reddit_scroll_steps_min: int
+    reddit_scroll_steps_max: int
     # 4chan Pass — authenticates the browser context so posts skip the per-post
     # reCAPTCHA. A Pass is bound to ONE IP at a time, so the worker re-auths
     # (via the same proxied context) at bootstrap and again if a captcha appears.
@@ -45,6 +52,21 @@ class WorkerConfig:
             submit_post_url_fallback_to_new=_bool(
                 os.getenv("FALLBACK_TO_NEW_REDDIT"), default=False
             ),
+            reddit_warmup_enabled=_bool(os.getenv("REDDIT_WARMUP_ENABLED"), default=True),
+            reddit_pre_reply_delay_min_seconds=float(
+                os.getenv("REDDIT_PRE_REPLY_DELAY_MIN_SECONDS", "3")
+            ),
+            reddit_pre_reply_delay_max_seconds=float(
+                os.getenv("REDDIT_PRE_REPLY_DELAY_MAX_SECONDS", "9")
+            ),
+            reddit_read_delay_min_seconds=float(
+                os.getenv("REDDIT_READ_DELAY_MIN_SECONDS", "4")
+            ),
+            reddit_read_delay_max_seconds=float(
+                os.getenv("REDDIT_READ_DELAY_MAX_SECONDS", "12")
+            ),
+            reddit_scroll_steps_min=int(os.getenv("REDDIT_SCROLL_STEPS_MIN", "2")),
+            reddit_scroll_steps_max=int(os.getenv("REDDIT_SCROLL_STEPS_MAX", "5")),
             chan_pass_token=(os.getenv("CHAN_PASS_TOKEN") or "").strip() or None,
             chan_pass_pin=(os.getenv("CHAN_PASS_PIN") or "").strip() or None,
         )

@@ -19,7 +19,13 @@ import pytest  # noqa: E402
 
 playwright = pytest.importorskip("playwright")  # noqa: F841
 
-from playwright_worker.poster import _comment_id_from_url, to_old_reddit  # noqa: E402
+from playwright_worker.poster import (  # noqa: E402
+    PostingError,
+    _comment_id_from_url,
+    _detect_network_block,
+    _raise_if_blocked_or_logged_out,
+    to_old_reddit,
+)
 
 
 def test_to_old_reddit_rewrites_www():
@@ -46,3 +52,47 @@ def test_comment_id_extraction():
 def test_comment_id_extraction_post_only():
     url = "https://old.reddit.com/r/x/comments/abc/slug/"
     assert _comment_id_from_url(url) is None
+
+
+class _FakeLocator:
+    def __init__(self, text: str = "", visible: bool = False):
+        self._text = text
+        self._visible = visible
+        self.first = self
+
+    def inner_text(self, timeout=0):
+        return self._text
+
+    def is_visible(self, timeout=0):
+        return self._visible
+
+
+class _FakePage:
+    def __init__(self, title: str = "", body: str = "", login_visible: bool = False):
+        self._title = title
+        self._body = body
+        self._login_visible = login_visible
+
+    def title(self):
+        return self._title
+
+    def locator(self, selector):
+        if selector == "body":
+            return _FakeLocator(text=self._body)
+        if "login-required" in selector:
+            return _FakeLocator(visible=self._login_visible)
+        return _FakeLocator()
+
+
+def test_detect_network_block_by_title():
+    assert _detect_network_block(_FakePage(title="Blocked")) is True
+
+
+def test_detect_network_block_by_body_text():
+    page = _FakePage(body="You have been blocked by network security.")
+    assert _detect_network_block(page) is True
+
+
+def test_blocked_page_raises_actionable_posting_error():
+    with pytest.raises(PostingError, match="blocked_by_reddit"):
+        _raise_if_blocked_or_logged_out(_FakePage(title="Blocked"))

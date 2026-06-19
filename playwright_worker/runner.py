@@ -12,7 +12,7 @@ from .chan_poster import ChanBanned, ChanFloodControl, ChanThreadDead
 from .chan_poster import post_reply as chan_post_reply
 from .glp_poster import GlpBanned, GlpFloodControl
 from .glp_poster import post_reply as glp_post_reply
-from .poster import CaptchaEncountered, PostingError, post_reply
+from .poster import CaptchaEncountered, PostingError, RedditWarmupConfig, post_reply
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,15 @@ def _process_one(
                 job,
                 use_old_reddit=config.use_old_reddit,
                 screenshot_dir=config.screenshot_dir,
+                warmup_config=RedditWarmupConfig(
+                    enabled=config.reddit_warmup_enabled,
+                    pre_reply_delay_min_seconds=config.reddit_pre_reply_delay_min_seconds,
+                    pre_reply_delay_max_seconds=config.reddit_pre_reply_delay_max_seconds,
+                    read_delay_min_seconds=config.reddit_read_delay_min_seconds,
+                    read_delay_max_seconds=config.reddit_read_delay_max_seconds,
+                    scroll_steps_min=config.reddit_scroll_steps_min,
+                    scroll_steps_max=config.reddit_scroll_steps_max,
+                ),
             )
     except ChanBanned as exc:
         logger.error("4chan banned on reply_id=%s: %s", reply_id, exc)

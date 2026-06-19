@@ -91,6 +91,10 @@ All settings are environment variables.
 | `SCREENSHOT_DIR` | `./worker-screenshots` | Where failure screenshots are written. |
 | `REQUEST_TIMEOUT_SECONDS` | `60` | Backend HTTP timeout. |
 | `USE_OLD_REDDIT` | `true` | Rewrite target URLs to `old.reddit.com` (significantly more stable for automation). Disable only if you have a specific reason. |
+| `REDDIT_WARMUP_ENABLED` | `true` | Before replying, browse the subreddit/thread with human-paced waits and scrolling. |
+| `REDDIT_PRE_REPLY_DELAY_MIN_SECONDS` / `REDDIT_PRE_REPLY_DELAY_MAX_SECONDS` | `3` / `9` | Random delay while warming up before opening the exact target. |
+| `REDDIT_READ_DELAY_MIN_SECONDS` / `REDDIT_READ_DELAY_MAX_SECONDS` | `4` / `12` | Random delay after viewing the target context before filling the reply. |
+| `REDDIT_SCROLL_STEPS_MIN` / `REDDIT_SCROLL_STEPS_MAX` | `2` / `5` | Number of natural scroll steps before replying. |
 
 ## Failure modes
 
