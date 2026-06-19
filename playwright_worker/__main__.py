@@ -8,6 +8,7 @@ Commands:
                             poster based on each job's `platform` field.
     run --platform=glp    — informational; the runner already dispatches per-job,
                             but this lets ops scope a worker to one platform.
+    account-run           — run the multi-account runtime for one account id.
 """
 
 from __future__ import annotations
@@ -15,8 +16,11 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import time
 
 from .browser import run_login_helper
+from .account_runtime import AccountRuntime
+from .client import BackendClient
 from .config import WorkerConfig
 from .runner import run_loop, run_once
 
@@ -59,6 +63,56 @@ def _run_glp_login_helper(user_data_dir: str, channel: str | None) -> None:
         ctx.close()
 
 
+def _load_account(config: WorkerConfig, account_id: int) -> dict:
+    client = BackendClient(
+        base_url=config.backend_base_url,
+        worker_name=config.worker_name,
+        timeout=config.request_timeout_seconds,
+    )
+    for account in client.list_active_accounts(platform="reddit"):
+        if int(account.get("id")) == account_id:
+            return account
+    raise RuntimeError(f"Reddit account id={account_id} is not active or enabled")
+
+
+def _run_account_runtime(config: WorkerConfig, account_id: int, once: bool) -> int:
+    from patchright.sync_api import sync_playwright
+
+    logger = logging.getLogger(__name__)
+    account = _load_account(config, account_id)
+    logger.info(
+        "Starting account-scoped Reddit worker account_id=%s username=%s once=%s",
+        account.get("id"),
+        account.get("username"),
+        once,
+    )
+
+    with sync_playwright() as playwright:
+        runtime = AccountRuntime(
+            playwright,
+            account,
+            config,
+            lambda: BackendClient(
+                base_url=config.backend_base_url,
+                worker_name=config.worker_name,
+                timeout=config.request_timeout_seconds,
+            ),
+        )
+        try:
+            runtime.bootstrap()
+            while True:
+                did_work = runtime.process_one()
+                if once:
+                    return 0
+                if not did_work:
+                    time.sleep(config.poll_interval_seconds)
+        except KeyboardInterrupt:
+            logger.info("Account worker interrupted, shutting down.")
+            return 0
+        finally:
+            runtime.shutdown()
+
+
 def main(argv: list[str] | None = None) -> int:
     _setup_logging()
     config = WorkerConfig.from_env()
@@ -82,6 +136,13 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
 
+    account_p = sub.add_parser(
+        "account-run",
+        help="Run the account-scoped Reddit worker for one account id.",
+    )
+    account_p.add_argument("--account-id", type=int, required=True)
+    account_p.add_argument("--once", action="store_true", help="Process one job then exit.")
+
     args = parser.parse_args(argv)
 
     if args.command == "login":
@@ -102,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if did_work else 0  # success either way; absence of work isn't an error
         run_loop(config, platform=platform)
         return 0
+
+    if args.command == "account-run":
+        return _run_account_runtime(config, account_id=args.account_id, once=args.once)
 
     parser.print_help()
     return 2

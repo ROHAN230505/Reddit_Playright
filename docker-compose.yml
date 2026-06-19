@@ -123,6 +123,35 @@ services:
       - backend
     restart: unless-stopped
 
+  # Account-scoped Reddit posting worker. This is the safer continuous path for
+  # cookie-backed accounts managed in the dashboard because the backend enforces
+  # cooldown/hour/day limits against REDDIT_ACCOUNT_WORKER_ID.
+  reddit_account_worker:
+    build: ./playwright_worker
+    profiles: ["reddit-account"]
+    command: ["account-run", "--account-id", "${REDDIT_ACCOUNT_WORKER_ID:-10}"]
+    env_file: .env
+    environment:
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://backend:8000}
+      PLAYWRIGHT_WORKER_NAME: ${REDDIT_ACCOUNT_WORKER_NAME:-reddit-account-worker}
+      POLL_INTERVAL_SECONDS: ${REDDIT_ACCOUNT_POLL_INTERVAL_SECONDS:-60}
+      CLAIM_STALE_AFTER_SECONDS: ${CLAIM_STALE_AFTER_SECONDS:-600}
+      HEADLESS: ${HEADLESS:-true}
+      USE_OLD_REDDIT: ${USE_OLD_REDDIT:-true}
+      REDDIT_WARMUP_ENABLED: ${REDDIT_WARMUP_ENABLED:-true}
+      REDDIT_PRE_REPLY_DELAY_MIN_SECONDS: ${REDDIT_PRE_REPLY_DELAY_MIN_SECONDS:-3}
+      REDDIT_PRE_REPLY_DELAY_MAX_SECONDS: ${REDDIT_PRE_REPLY_DELAY_MAX_SECONDS:-9}
+      REDDIT_READ_DELAY_MIN_SECONDS: ${REDDIT_READ_DELAY_MIN_SECONDS:-4}
+      REDDIT_READ_DELAY_MAX_SECONDS: ${REDDIT_READ_DELAY_MAX_SECONDS:-12}
+      REDDIT_SCROLL_STEPS_MIN: ${REDDIT_SCROLL_STEPS_MIN:-2}
+      REDDIT_SCROLL_STEPS_MAX: ${REDDIT_SCROLL_STEPS_MAX:-5}
+    volumes:
+      - playwright_account_profiles:/home/pwuser/.reddit-worker-profile-base
+      - ./worker-screenshots:/app/worker-screenshots
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   # 4chan-only posting worker — opt-in via the `chan` profile. Scoped to
   # platform=chan via WORKER_PLATFORM, so the backend only ever hands it 4chan
   # replies; it can never claim or post Reddit/GLP jobs (no Reddit/GLP login is
@@ -155,6 +184,7 @@ services:
 volumes:
   postgres_data:
   playwright_profile:
+  playwright_account_profiles:
   chan_profile:
   instagram_browser_state:
   instagram_screenshots:
