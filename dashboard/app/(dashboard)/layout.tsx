@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { NoticeProvider } from "@/lib/notice-context";
+import { CommandPalette } from "@/components/shell/command-palette";
 import { IconRail } from "@/components/shell/icon-rail";
 import { TopBar } from "@/components/shell/top-bar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -29,6 +30,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </Suspense>
         <div className="min-w-0 flex-1 p-4 md:p-6">{children}</div>
       </div>
+      <CommandPalette />
     </div>
   );
 }
