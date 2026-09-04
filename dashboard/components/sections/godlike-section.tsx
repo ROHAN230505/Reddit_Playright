@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, Skeleton } from "@/components/ui";
+import { Badge, Button, Card, Skeleton } from "@/components/legacy-ui";
 import { api, type RedditAccountItem, type ReplyItem } from "@/lib/api";
 import { useNotice } from "@/lib/notice-context";
 import { RecentlyPostedPanel } from "@/components/recently-posted";

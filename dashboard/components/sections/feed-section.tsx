@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type ContentPost, type SubredditContent, type TrackedSubreddit } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { Card, Input, Select } from "@/components/ui";
+import { Card, Input, Select } from "@/components/legacy-ui";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState, Pagination } from "@/components/sections/shared";
 

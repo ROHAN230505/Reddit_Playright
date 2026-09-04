@@ -11,7 +11,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState, Pagination } from "@/components/sections/shared";
 

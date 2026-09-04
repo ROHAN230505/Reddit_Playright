@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Button, StateMessage } from "@/components/ui";
+import { Button, StateMessage } from "@/components/legacy-ui";
 
 export function RepliesTabs() {
   const pathname = usePathname() ?? "";

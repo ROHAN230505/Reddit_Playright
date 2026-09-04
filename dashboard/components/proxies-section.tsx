@@ -16,7 +16,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 
 function relativeTime(value: string | null): string {
   if (!value) return "n/a";

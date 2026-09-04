@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { type ReplySummary } from "@/lib/api";
-import { Card } from "@/components/ui";
+import { Card } from "@/components/legacy-ui";
 
 // Backend returns naive UTC datetimes (no tz suffix). Force UTC so the
 // day-windowing is correct regardless of the viewer's timezone.

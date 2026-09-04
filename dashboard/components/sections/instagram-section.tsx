@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Card, Skeleton } from "@/components/ui";
+import { Badge, Button, Card, Skeleton } from "@/components/legacy-ui";
 import { useNotice } from "@/lib/notice-context";
 import {
   igApi,

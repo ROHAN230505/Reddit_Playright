@@ -7,7 +7,7 @@ import {
   type RedditAccountItem,
   type ReplyItem,
 } from "@/lib/api";
-import { Button, Card, Input, Textarea } from "@/components/ui";
+import { Button, Card, Input, Textarea } from "@/components/legacy-ui";
 import { useNotice } from "@/lib/notice-context";
 import { EmptyState, RepliesTabs } from "@/components/sections/shared";
 

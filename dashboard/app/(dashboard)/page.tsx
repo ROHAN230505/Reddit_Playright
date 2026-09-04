@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Platform, type ReplyItem } from "@/lib/api";
-import { Card, Skeleton } from "@/components/ui";
+import { Card, Skeleton } from "@/components/legacy-ui";
 import { cn } from "@/lib/utils";
 import { PLATFORMS } from "@/components/platforms";
 import { ArrowRightIcon } from "@/components/icons";

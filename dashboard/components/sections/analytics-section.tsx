@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type DashboardSummary } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { Card, Skeleton } from "@/components/ui";
+import { Card, Skeleton } from "@/components/legacy-ui";
 import { EmptyState } from "@/components/sections/shared";
 
 export default function AnalyticsSection() {

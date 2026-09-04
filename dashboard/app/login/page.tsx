@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input } from "@/components/legacy-ui";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");

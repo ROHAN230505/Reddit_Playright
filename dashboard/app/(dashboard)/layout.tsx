@@ -4,7 +4,7 @@ import { useState, Suspense, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { NoticeProvider, useNotice } from "@/lib/notice-context";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/legacy-ui";
 import { cn } from "@/lib/utils";
 import { PLATFORMS } from "@/components/platforms";
 import {

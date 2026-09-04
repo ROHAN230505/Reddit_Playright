@@ -16,7 +16,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 
 const PROFILE_SLOT_COUNT = 6;
 

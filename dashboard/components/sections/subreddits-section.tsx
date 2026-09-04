@@ -14,7 +14,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 import { useNotice } from "@/lib/notice-context";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState } from "@/components/sections/shared";

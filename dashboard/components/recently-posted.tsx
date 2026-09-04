@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { type ReplySummary } from "@/lib/api";
-import { Button, Card } from "@/components/ui";
+import { Button, Card } from "@/components/legacy-ui";
 
 // Backend returns naive UTC datetimes (no tz suffix). JS parses those as
 // LOCAL time, so "Xm ago" silently breaks for non-UTC timezones. Force UTC.

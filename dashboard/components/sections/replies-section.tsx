@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type ReplySummary } from "@/lib/api";
-import { Skeleton, StateMessage } from "@/components/ui";
+import { Skeleton, StateMessage } from "@/components/legacy-ui";
 import { RepliesTabs } from "@/components/sections/shared";
 import { RecentlyPostedPanel } from "@/components/recently-posted";
 import { PostedAnalytics } from "@/components/posted-analytics";

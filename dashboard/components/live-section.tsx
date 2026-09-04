@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api, type AccountActivity, type RedditAccountItem } from "@/lib/api";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/legacy-ui";
 
 function relativeTime(value: string | null): string {
   if (!value) return "n/a";
