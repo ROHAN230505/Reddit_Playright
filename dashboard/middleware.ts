@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "/feed": "/analytics?tab=feed",
   "/logs": "/analytics?tab=logs",
-  "/live": "/analytics?tab=worker",
+  "/live": "/replies?tab=realtime",
   "/accounts": "/settings?tab=accounts",
   "/proxies": "/settings?tab=proxies",
   "/subreddits": "/settings?tab=subreddits",
-  "/replies/live": "/settings?tab=queue",
+  "/replies/live": "/replies?tab=queue",
 };
 
 export function middleware(request: NextRequest) {

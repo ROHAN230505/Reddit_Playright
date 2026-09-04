@@ -9,14 +9,14 @@ import { activeTab, DashboardTabs, type DashboardTab } from "@/components/sectio
 
 const TABS: DashboardTab[] = [
   {
-    key: "subreddits",
-    label: "Subreddits",
-    description: "Choose which communities are tracked and scraped.",
-  },
-  {
     key: "accounts",
     label: "Accounts",
     description: "Manage posting accounts, health, and limits.",
+  },
+  {
+    key: "subreddits",
+    label: "Subreddits",
+    description: "Choose which communities are tracked and scraped.",
   },
   {
     key: "proxies",

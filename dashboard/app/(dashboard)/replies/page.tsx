@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import RepliesSection from "@/components/sections/replies-section";
+import { RepliesDesk } from "@/components/reddit/replies-desk";
 
 export default function RepliesPage() {
   return (
     <Suspense>
-      <RepliesSection />
+      <RepliesDesk />
     </Suspense>
   );
 }
