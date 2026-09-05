@@ -181,9 +181,13 @@ def _classify_profile_response(response: Any) -> tuple[str, str]:
         return "banned", f"Public profile: {reason}"
     if json_state == "ok" and status and 200 <= int(status) < 400:
         return "ok", "Public profile exists"
-    if gone_phrase or json_state == "missing" or status == 404:
+    if gone_phrase or json_state == "missing":
         reason = gone_phrase or "profile 404 / not found"
         return "missing", f"Public profile: {reason}"
+    if status == 404:
+        # old.reddit often returns plain "Not Found" for logged-out about.json
+        # on accounts that still exist. Do not treat that as a missing user.
+        return "blocked", "Public profile HTTP 404"
     if "<title>blocked</title>" in text.lower() or "title>Blocked</title>" in text:
         return "blocked", "Public profile: Reddit returned a Blocked interstitial"
     if status in (401, 403, 429) or block_phrase:
@@ -253,6 +257,11 @@ def check_reddit_account(
             if state == "ok":
                 profile_state, profile_detail = state, detail
                 return True
+        if any(state == "blocked" for state, _ in seen):
+            profile_state, profile_detail = next(
+                item for item in seen if item[0] == "blocked"
+            )
+            return False
         for state, detail in seen:
             if state == "missing":
                 profile_state, profile_detail = state, detail

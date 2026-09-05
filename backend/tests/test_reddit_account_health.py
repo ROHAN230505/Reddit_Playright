@@ -269,6 +269,29 @@ def test_apify_public_about_json_classifies_healthy_when_account_proxy_is_403():
     assert result.profile_banned is False
 
 
+def test_logged_out_about_json_404_is_not_missing_when_session_is_alive():
+    """old.reddit about.json 404s logged-out for live users. That is not a ban."""
+
+    def http_get(url, **kwargs):
+        if "/api/me.json" in url:
+            return FakeResp(200, json_data={"name": "Healthy_Concert7779"})
+        if "about.json" in url:
+            return FakeResp(404, text="Not Found")
+        return FakeResp(403, text="<html><title>Blocked</title>forbidden</html>")
+
+    result = check_reddit_account(
+        username="Healthy_Concert7779",
+        cookie_header={"reddit_session": "ok"},
+        proxy_url="http://user:pass@disp.oxylabs.io:8001",
+        http_get=http_get,
+        public_proxy_url="http://groups-RESIDENTIAL:token@proxy.apify.com:8000",
+    )
+    assert result.health != BANNED
+    assert result.health == HEALTHY
+    assert result.session_alive is True
+    assert result.profile_banned is not True
+
+
 def test_apify_public_about_json_suspended_is_banned():
     def http_get(url, **kwargs):
         proxies = kwargs.get("proxies") or {}
