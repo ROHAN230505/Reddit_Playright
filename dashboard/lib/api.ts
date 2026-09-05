@@ -7,9 +7,11 @@ export type TrackedSubreddit = {
   id: number;
   name: string;
   created_at: string;
+  brand_id?: number | null;
+  brand_name?: string | null;
 };
 
-export type Platform = "reddit" | "glp" | "chan" | "instagram";
+export type Platform = "reddit" | "glp" | "chan" | "instagram" | "karma";
 
 export type ReplyItem = {
   reply_id: number;
@@ -36,10 +38,19 @@ export type ReplyItem = {
   posted_at?: string | null;
   posted_url?: string | null;
   platform?: Platform;
+  auto_approved_at?: string | null;
+  auto_approval_reason?: string | null;
+  auto_approval_policy?: string | null;
+  // Karma binding: who this reply was DRAFTED for (stable), which is not the
+  // same question as who posted it.
+  assigned_account_id?: number | null;
+  persona_id?: number | null;
+  persona_revision?: number | null;
   platform_post_id?: string | null;
   platform_comment_id?: string | null;
   platform_section?: string | null;
   posted_platform_comment_id?: string | null;
+  brand_id?: number | null;
 };
 
 /**
@@ -60,6 +71,55 @@ export type ReplySummary = {
   posted_url?: string | null;
   platform?: Platform;
   platform_section?: string | null;
+  assigned_account_id?: number | null;
+  persona_id?: number | null;
+};
+
+export type Persona = {
+  id: number;
+  name: string;
+  is_enabled: boolean;
+  notes: string | null;
+  system_prompt: string;
+  style_rules: string;
+  subreddits: string[];
+  max_chars: number;
+  max_sentences: number;
+  daily_reply_cap: number;
+  revision: number;
+  account_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type KarmaAccount = {
+  id: number;
+  username: string;
+  is_enabled: boolean;
+  persona_id: number | null;
+  persona_name: string | null;
+  subreddits: string[];
+  karma_comment: number;
+  karma_link: number;
+  karma_checked_at: string | null;
+  queued: number;
+  posted_today: number;
+  posts_per_day_limit: number;
+  next_eligible_at: string | null;
+};
+
+export type KarmaConfig = {
+  enabled: boolean;
+  account_daily_cap: number;
+  account_subreddit_daily_cap: number;
+  persona_daily_cap: number;
+  max_posts_per_thread: number;
+  scrape_enabled: boolean;
+  scrape_sort: string;
+  scrape_limit: number;
+  llm_filter: boolean;
+  max_thread_age_hours: number;
+  subreddits: string[];
 };
 
 export type ContentPost = {
@@ -150,6 +210,93 @@ export type SubredditHealthItem = {
   error_count: number;
 };
 
+export type RedditAutomationReplyItem = {
+  reply_id: number;
+  status: string;
+  subreddit: string | null;
+  reply_text_preview: string;
+  target_url: string | null;
+  posted_url: string | null;
+  posted_at: string | null;
+  event_time: string | null;
+  posting_attempts: number;
+  posting_claimed_by: string | null;
+  posting_error: string | null;
+  account_id: number | null;
+  account_username: string | null;
+};
+
+export type RedditAutomationAccountItem = {
+  account_id: number;
+  username: string;
+  status: string;
+  is_enabled: boolean;
+  readiness_status: "ready" | "attention" | "blocked" | "disabled" | "cooldown" | "limited" | string;
+  readiness_reasons: string[];
+  proxy_label: string | null;
+  proxy_status: string | null;
+  profile_index: number | null;
+  has_cookies: boolean;
+  last_action: string | null;
+  last_error: string | null;
+  last_seen_at: string | null;
+  next_eligible_at: string | null;
+  posts_last_hour: number;
+  posts_last_day: number;
+  posts_per_hour_limit: number;
+  posts_per_day_limit: number;
+  seconds_until_eligible: number;
+  is_in_cooldown: boolean;
+};
+
+export type RedditAutomationState = {
+  state: string;
+  title: string;
+  detail: string;
+  blockers: string[];
+  worker_running: boolean;
+  approved_queue_count: number;
+  active_account_id: number | null;
+  active_account_username: string | null;
+  cooldown_seconds: number;
+  last_action: string | null;
+  last_seen_at: string | null;
+};
+
+export type RedditAutomationSummary = {
+  total_automated_posts: number;
+  manual_posted_posts: number;
+  total_reddit_posted_posts: number;
+  posts_last_hour: number;
+  posts_last_day: number;
+  manual_posts_last_day: number;
+  failed_attempts: number;
+  posting_now: number;
+  total_attempted_replies: number;
+  success_rate: number;
+  average_attempts_per_post: number;
+  status_counts: Record<string, number>;
+  auto_approved_today: number;
+  auto_approved_normal_today: number;
+  auto_approved_promo_today: number;
+  auto_approval_caps: {
+    normal_daily_cap: number;
+    promo_daily_cap: number;
+    per_subreddit_daily_cap: number;
+    normal_min_value: number;
+    promo_min_value: number;
+  };
+  account_count: number;
+  active_account_count: number;
+  latest_posts: RedditAutomationReplyItem[];
+  latest_manual_posts: RedditAutomationReplyItem[];
+  latest_failures: RedditAutomationReplyItem[];
+  approved_queue: RedditAutomationReplyItem[];
+  current_state: RedditAutomationState;
+  top_subreddits: Array<{ name: string; count: number }>;
+  accounts: RedditAutomationAccountItem[];
+};
+
 export type ProxyItem = {
   id: number;
   label: string;
@@ -166,10 +313,18 @@ export type ProxyItem = {
   created_at: string;
 };
 
+export type RedditHealth =
+  | "HEALTHY"
+  | "BANNED"
+  | "SESSION_DEAD"
+  | "NO_COOKIES"
+  | "PROXY_DEAD"
+  | "UNKNOWN";
+
 export type RedditAccountItem = {
   id: number;
   username: string;
-  status: "NEW" | "VERIFYING" | "ACTIVE" | "NEEDS_REAUTH" | "FAILED" | "DISABLED";
+  status: "NEW" | "VERIFYING" | "ACTIVE" | "NEEDS_REAUTH" | "FAILED" | "DISABLED" | "BANNED";
   has_totp: boolean;
   proxy_id: number | null;
   proxy_label: string | null;
@@ -193,6 +348,11 @@ export type RedditAccountItem = {
   assigned_subreddits?: string[];
   platform?: Platform;
   assigned_sections?: string[];
+  brand_id?: number | null;
+  reddit_health?: RedditHealth | null;
+  reddit_health_detail?: string | null;
+  reddit_health_checked_at?: string | null;
+  reddit_session_alive?: boolean | null;
 };
 
 export type AutoAssignSubredditsResponse = {
@@ -248,6 +408,7 @@ export type AccountHealthResponse = {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
@@ -261,7 +422,45 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export type BrandConfig = {
+  id: number | null;
+  name: string;
+  mention: string;
+  aliases: string[];
+  one_liner: string;
+  topics: string[];
+  promo_ratio: number | null;
+  salesy_phrases: string[];
+  example_mentions: string[];
+  is_active: boolean;
+  is_enabled: boolean;
+  subreddits: string[];
+};
+
+export type BrandPayload = {
+  name: string;
+  mention: string;
+  aliases: string[];
+  one_liner: string;
+  topics: string[];
+  promo_ratio: number | null;
+  salesy_phrases: string[];
+  example_mentions: string[];
+  is_enabled?: boolean;
+  is_active?: boolean;
+  subreddits?: string[];
+};
+
 export const api = {
+  brand: () => request<BrandConfig>("/brand"),
+  brands: () => request<BrandConfig[]>("/brands"),
+  createBrand: (body: BrandPayload) =>
+    request<BrandConfig>("/brands", { method: "POST", body: JSON.stringify(body) }),
+  updateBrandById: (id: number, body: BrandPayload) =>
+    request<BrandConfig>(`/brands/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteBrand: (id: number) => request<{ id: number }>(`/brands/${id}`, { method: "DELETE" }),
+  updateBrand: (body: BrandPayload) =>
+    request<BrandConfig>("/brand", { method: "PUT", body: JSON.stringify(body) }),
   // Proxies
   proxies: () => request<ProxyItem[]>("/proxies"),
   createProxy: (body: {
@@ -276,6 +475,7 @@ export const api = {
   }) =>
     fetch(`${API_BASE}/proxies`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       cache: "no-store",
@@ -287,14 +487,15 @@ export const api = {
     request<ProxyItem>(`/proxies/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteProxy: (id: number) => request<{ id: number }>(`/proxies/${id}`, { method: "DELETE" }),
   validateProxy: (id: number) =>
-    fetch(`${API_BASE}/proxies/${id}/validate`, { method: "POST", cache: "no-store" }).then(async (r) => {
+    fetch(`${API_BASE}/proxies/${id}/validate`, { method: "POST", credentials: "include", cache: "no-store" }).then(async (r) => {
       const data = await r.json();
       return { ok: r.ok, ip: data?.ip ?? null, error: data?.error ?? null };
     }),
 
   // Accounts
   accounts: () => request<RedditAccountItem[]>("/accounts"),
-  accountsHealth: () => request<AccountHealthResponse>("/accounts/health"),
+  accountsHealth: (live = false) =>
+    request<AccountHealthResponse>(`/accounts/health${live ? "?live=1" : ""}`),
   account: (id: number) => request<RedditAccountItem>(`/accounts/${id}`),
   createAccount: (body: {
     username: string;
@@ -307,6 +508,7 @@ export const api = {
     min_seconds_between_posts?: number;
     max_seconds_between_posts?: number;
     platform?: Platform;
+    brand_id?: number | null;
   }) =>
     request<RedditAccountItem>("/accounts", { method: "POST", body: JSON.stringify(body) }),
   updateAccount: (id: number, body: {
@@ -321,6 +523,7 @@ export const api = {
     max_seconds_between_posts?: number;
     assigned_subreddits?: string[];
     assigned_sections?: string[];
+    brand_id?: number | null;
   }) =>
     request<RedditAccountItem>(`/accounts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   autoAssignSubreddits: () =>
@@ -332,6 +535,7 @@ export const api = {
   uploadCookies: (id: number, raw: string) =>
     fetch(`${API_BASE}/accounts/${id}/cookies`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ raw }),
       cache: "no-store",
@@ -387,6 +591,52 @@ export const api = {
     request<{ auto_approve: boolean; boards: string[]; threads_per_board: number }>(
       "/chan/config",
     ),
+  karmaConfig: () => request<KarmaConfig>("/karma/config"),
+  triggerKarmaScrape: (limit?: number) =>
+    request<{ task_id: string; limit: number; auto_approve: boolean }>(
+      `/karma/scrape-now${limit ? `?limit=${limit}` : ""}`,
+      { method: "POST" },
+    ),
+  personas: () => request<Persona[]>("/karma/personas"),
+  createPersona: (payload: {
+    name: string;
+    system_prompt: string;
+    style_rules: string;
+    subreddits: string[];
+    notes?: string | null;
+    max_chars?: number;
+    max_sentences?: number;
+    daily_reply_cap?: number;
+    is_enabled?: boolean;
+  }) =>
+    request<Persona>("/karma/personas", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updatePersona: (
+    personaId: number,
+    payload: Partial<{
+      name: string;
+      system_prompt: string;
+      style_rules: string;
+      subreddits: string[];
+      notes: string | null;
+      max_chars: number;
+      max_sentences: number;
+      daily_reply_cap: number;
+      is_enabled: boolean;
+    }>,
+  ) =>
+    request<Persona>(`/karma/personas/${personaId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  deletePersona: (personaId: number) =>
+    request<{ message: string; persona_id: number }>(`/karma/personas/${personaId}`, {
+      method: "DELETE",
+    }),
+  karmaAccounts: () => request<KarmaAccount[]>("/karma/accounts"),
+  karmaUnboundCount: () => request<{ unbound: number }>("/karma/unbound-count"),
   replies: (
     status: string,
     limit = 200,
@@ -394,6 +644,7 @@ export const api = {
     order: "upvotes" | "newest" = "upvotes",
     minPromo?: number,
     platform?: Platform,
+    brandId?: number | null,
   ) => {
     const params = new URLSearchParams({
       status,
@@ -403,6 +654,7 @@ export const api = {
     if (subreddit && subreddit !== "All") params.set("subreddit", subreddit);
     if (minPromo && minPromo > 0) params.set("min_promo", String(minPromo));
     if (platform) params.set("platform", platform);
+    if (brandId != null) params.set("brand_id", String(brandId));
     return request<ReplyItem[]>(`/replies?${params}`);
   },
   // Lightweight projection for analytics/feed views — see ReplySummary. Skips
@@ -429,6 +681,13 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ reply_ids: replyIds, status }),
     }),
+  stampReplyBrands: () =>
+    request<{ updated: number }>("/replies/stamp-brands", { method: "POST" }),
+  syncTrackedFromBrands: () =>
+    request<{ added: string[]; tracked: string[]; count: number }>(
+      "/tracked-subreddits/sync-from-brands",
+      { method: "POST" },
+    ),
   generateRepliesFromExisting: (subreddits?: string[], perSubLimit = 20) =>
     request<{
       queued: number;
@@ -441,9 +700,12 @@ export const api = {
         per_sub_limit: perSubLimit,
       }),
     }),
+  // accountId may be null for a manual post with no bound account (e.g. a GLP
+  // slot before GLP accounts are seeded) — the backend records it as POSTED
+  // and just skips the account attribution + cooldown.
   markReplyPostedByAccount: (
     replyId: number,
-    accountId: number,
+    accountId: number | null,
     postedUrl: string,
     replyText?: string,
   ) =>
@@ -456,7 +718,7 @@ export const api = {
     }>(`/replies/${replyId}/mark-posted`, {
       method: "POST",
       body: JSON.stringify({
-        account_id: accountId,
+        ...(accountId !== null ? { account_id: accountId } : {}),
         posted_url: postedUrl,
         ...(replyText !== undefined ? { reply_text: replyText } : {}),
       }),
@@ -467,7 +729,32 @@ export const api = {
     return request<ScrapeRunList>(`/scrape-runs?${params}`);
   },
   summary: () => request<DashboardSummary>("/dashboard/summary"),
+  redditAutomation: (filters?: {
+    dateFrom?: string;
+    dateTo?: string;
+    accountId?: number | null;
+    subreddit?: string;
+    status?: string;
+    limit?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters?.dateFrom) params.set("date_from", new Date(filters.dateFrom).toISOString());
+    if (filters?.dateTo) params.set("date_to", new Date(`${filters.dateTo}T23:59:59`).toISOString());
+    if (filters?.accountId) params.set("account_id", String(filters.accountId));
+    if (filters?.subreddit?.trim()) params.set("subreddit", filters.subreddit.trim());
+    if (filters?.status && filters.status !== "ALL") params.set("status", filters.status);
+    if (filters?.limit) params.set("limit", String(filters.limit));
+    const query = params.toString();
+    return request<RedditAutomationSummary>(`/dashboard/reddit-automation${query ? `?${query}` : ""}`);
+  },
   search: (query: string) => request<DashboardSearchResult[]>(`/dashboard/search?q=${encodeURIComponent(query)}`),
   subredditHealth: () => request<SubredditHealthItem[]>("/dashboard/subreddit-health"),
-  workerQueue: () => request<{ counts: Record<string, number> }>("/worker/queue"),
+  workerQueue: (platform?: Platform) => {
+    const params = new URLSearchParams();
+    if (platform) params.set("platform", platform);
+    const query = params.toString();
+    return request<{ counts: Record<string, number> }>(
+      `/worker/queue${query ? `?${query}` : ""}`,
+    );
+  },
 };
