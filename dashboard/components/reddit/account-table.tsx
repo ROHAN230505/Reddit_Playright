@@ -155,17 +155,30 @@ function AccountActions({
   const busy = toggleEnabled.isPending || reverify.isPending;
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1">
-      <Button type="button" size="sm" variant="ghost" onClick={() => onEdit(account)}>
+    <div className="inline-flex flex-nowrap items-center justify-end gap-1">
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="h-8 w-14 justify-center px-0"
+        onClick={() => onEdit(account)}
+      >
         Edit
       </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={() => onCookies(account)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="h-8 w-[4.75rem] justify-center px-0"
+        onClick={() => onCookies(account)}
+      >
         {account.has_cookies ? "Cookies ✓" : "Cookies"}
       </Button>
       <Button
         type="button"
         size="sm"
         variant="ghost"
+        className="h-8 w-16 justify-center px-0"
         disabled={busy}
         onClick={() => toggleEnabled.mutate()}
       >
@@ -175,6 +188,7 @@ function AccountActions({
         type="button"
         size="sm"
         variant="ghost"
+        className="h-8 w-[4.5rem] justify-center px-0"
         disabled={busy}
         onClick={() => reverify.mutate()}
       >
@@ -357,7 +371,10 @@ export function AccountTable() {
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
-                  <TableHead key={header.id} className={header.id === "actions" ? "text-right" : undefined}>
+                  <TableHead
+                    key={header.id}
+                    className={header.id === "actions" ? "w-[1%] whitespace-nowrap text-right" : undefined}
+                  >
                     {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                   </TableHead>
                 ))}
@@ -390,7 +407,9 @@ export function AccountTable() {
                     {row.getAllCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={cell.column.id === "actions" ? "text-right" : undefined}
+                        className={
+                          cell.column.id === "actions" ? "w-[1%] whitespace-nowrap text-right" : undefined
+                        }
                       >
                         <table.FlexRender cell={cell} />
                       </TableCell>

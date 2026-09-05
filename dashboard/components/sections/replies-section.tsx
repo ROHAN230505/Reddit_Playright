@@ -44,7 +44,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { visibleRefetchInterval } from "@/lib/query";
 import { formatDate } from "@/lib/utils";
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 10;
 const EMPTY_ROWS: ReplySummary[] = [];
 
 const features = tableFeatures({
@@ -241,7 +241,7 @@ function PostedFailedTable({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Posted / failed</h2>
-          <p className="text-xs text-muted-foreground">Filter by status and subreddit. 30 per page.</p>
+          <p className="text-xs text-muted-foreground">Filter by status and subreddit. 10 per page.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select
