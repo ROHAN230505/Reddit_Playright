@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Card, Skeleton } from "@/components/legacy-ui";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { useNotice } from "@/lib/notice-context";
 import {
   igApi,
@@ -120,14 +121,12 @@ export default function InstagramSection() {
     load(tab);
   }, [tab, load]);
 
-  // Keep the overview's queue counts live.
-  useEffect(() => {
-    if (tab !== "overview") return;
-    const timer = window.setInterval(() => {
+  useVisibleInterval(
+    () => {
       igApi.queues().then((r) => setQueues(r.queues)).catch(() => {});
-    }, 10000);
-    return () => window.clearInterval(timer);
-  }, [tab]);
+    },
+    tab === "overview" ? 10_000 : null,
+  );
 
   async function review(id: number, decision: "approve" | "reject") {
     await runAction(async () => {

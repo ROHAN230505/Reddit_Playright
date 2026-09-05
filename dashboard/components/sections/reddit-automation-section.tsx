@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, type RedditAutomationSummary } from "@/lib/api";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { formatDate, percent } from "@/lib/utils";
 import {
   Badge,
@@ -57,12 +58,22 @@ export default function RedditAutomationSection() {
         });
     };
     load();
-    const timer = window.setInterval(load, 15000);
     return () => {
       alive = false;
-      window.clearInterval(timer);
     };
   }, [filters]);
+
+  useVisibleInterval(() => {
+    api
+      .redditAutomation(filters)
+      .then((data) => {
+        setSummary(data);
+        setError("");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load Reddit automation analytics.");
+      });
+  }, 15_000);
 
   const accounts = summary?.accounts || [];
 

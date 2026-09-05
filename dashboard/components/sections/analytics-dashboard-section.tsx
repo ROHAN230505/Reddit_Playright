@@ -1,13 +1,28 @@
 "use client";
 
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import AnalyticsSection from "@/components/sections/analytics-section";
-import FeedSection from "@/components/sections/feed-section";
-import LogsSection from "@/components/sections/logs-section";
-import RedditAutomationSection from "@/components/sections/reddit-automation-section";
-import RepliesSection from "@/components/sections/replies-section";
+import { Skeleton } from "@/components/ui/skeleton";
 import { activeTab, DashboardTabs, type DashboardTab } from "@/components/sections/dashboard-tabs";
+
+const tabFallback = <Skeleton className="h-64 rounded-xl" />;
+const AnalyticsSection = dynamic(() => import("@/components/sections/analytics-section"), {
+  loading: () => tabFallback,
+});
+const FeedSection = dynamic(() => import("@/components/sections/feed-section"), {
+  loading: () => tabFallback,
+});
+const LogsSection = dynamic(() => import("@/components/sections/logs-section"), {
+  loading: () => tabFallback,
+});
+const RedditAutomationSection = dynamic(
+  () => import("@/components/sections/reddit-automation-section"),
+  { loading: () => tabFallback },
+);
+const RepliesSection = dynamic(() => import("@/components/sections/replies-section"), {
+  loading: () => tabFallback,
+});
 
 const TABS: DashboardTab[] = [
   {

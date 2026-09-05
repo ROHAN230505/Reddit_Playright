@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Skeleton } from "@/components/legacy-ui";
 import { api, type RedditAccountItem, type ReplyItem } from "@/lib/api";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { useNotice } from "@/lib/notice-context";
 import { RecentlyPostedPanel } from "@/components/recently-posted";
 import { PostedAnalytics } from "@/components/posted-analytics";
@@ -84,12 +85,9 @@ export default function GodlikeSection() {
       try {
         const rows =
           status === "POSTED"
-            ? await api.replies("POSTED", 2000, undefined, "newest", 0, "glp")
+            ? await api.replies("POSTED", 400, undefined, "newest", 0, "glp")
             : await fetchQueued();
         setReplies(rows);
-        if (status === "POSTED") {
-          setCounts((c) => ({ ...c, POSTED: rows.length }));
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load GLP replies");
       } finally {
@@ -99,24 +97,19 @@ export default function GodlikeSection() {
     [setError],
   );
 
-  // Queued is small and changes as the worker posts — poll it frequently.
   const refreshCounts = useCallback(async () => {
     try {
-      const queued = await fetchQueued().then((r) => r.length);
-      setCounts((c) => ({ ...c, QUEUED: queued }));
+      const { counts: queueCounts } = await api.workerQueue("glp");
+      setCounts({
+        QUEUED:
+          (queueCounts.PENDING ?? 0) +
+          (queueCounts.APPROVED ?? 0) +
+          (queueCounts.POSTING ?? 0) +
+          (queueCounts.FAILED ?? 0),
+        POSTED: queueCounts.POSTED ?? 0,
+      });
     } catch {
       // counts are best-effort; ignore transient errors
-    }
-  }, []);
-
-  // Posted grows slowly — fetch the count on mount (load("POSTED") keeps it
-  // fresh while viewing) rather than re-pulling the full set every few seconds.
-  const refreshPostedCount = useCallback(async () => {
-    try {
-      const rows = await api.replies("POSTED", 2000, undefined, "newest", 0, "glp");
-      setCounts((c) => ({ ...c, POSTED: rows.length }));
-    } catch {
-      // best-effort
     }
   }, []);
 
@@ -125,11 +118,12 @@ export default function GodlikeSection() {
   }, [tab, load]);
 
   useEffect(() => {
-    refreshCounts();
-    refreshPostedCount();
-    const timer = window.setInterval(refreshCounts, 8000);
-    return () => window.clearInterval(timer);
-  }, [refreshCounts, refreshPostedCount]);
+    void refreshCounts();
+  }, [refreshCounts]);
+
+  useVisibleInterval(() => {
+    void refreshCounts();
+  }, 15_000);
 
   useEffect(() => {
     // One-shot read of the backend's auto-approve flag + scraped topics so the

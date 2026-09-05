@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type ScrapeRunList } from "@/lib/api";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { formatDate } from "@/lib/utils";
 import {
   Badge,
@@ -32,12 +33,12 @@ export default function LogsSection() {
 
   useEffect(() => {
     load().catch(() => {});
-    const timer = window.setInterval(() => {
-      load().catch(() => {});
-    }, 30_000);
-    return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedSubreddit]);
+
+  useVisibleInterval(() => {
+    load().catch(() => {});
+  }, 30_000);
 
   const workerCounts = summary?.counts || {};
   const totalPages = Math.max(1, Math.ceil((scrapeRuns?.total_runs || 0) / (scrapeRuns?.page_size || 8)));

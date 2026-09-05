@@ -6,14 +6,15 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { visibleRefetchInterval } from "@/lib/query";
 
-export function usePendingReplies(brandId?: number) {
+export function usePendingReplies(brandId?: number, enabled = true) {
   return useQuery({
     queryKey: queryKeys.replies("PENDING", { brandId, platform: "reddit" }),
     queryFn: () =>
       api.replies("PENDING", 500, undefined, "newest", 40, "reddit", brandId),
     staleTime: 10_000,
-    refetchInterval: visibleRefetchInterval(15_000),
+    refetchInterval: enabled ? visibleRefetchInterval(15_000) : false,
     refetchIntervalInBackground: false,
+    enabled,
     placeholderData: (previous) => previous,
   });
 }
