@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import subprocess
 import time
 from typing import Callable
@@ -102,18 +103,28 @@ def _ensure_display() -> subprocess.Popen | None:
 
 def fetch_public_profile_browser(username: str, proxy_url: str | None) -> tuple[str, str] | None:
     """Open /user/{username}/ logged-out. None if Chromium cannot start."""
+    import tempfile
+
     safe = quote(username, safe="")
     urls = (
         f"https://www.reddit.com/user/{safe}/",
         f"https://old.reddit.com/user/{safe}/",
     )
     xvfb = None
+    user_data_dir = tempfile.mkdtemp(prefix="reddit-health-")
     try:
         xvfb = _ensure_display()
         sync_playwright = _sync_playwright()
         headless = not bool(os.environ.get("DISPLAY"))
         launch_args: dict = {
+            "user_data_dir": user_data_dir,
             "headless": headless,
+            "user_agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "viewport": {"width": 1366, "height": 900},
+            "locale": "en-US",
             "args": [
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -124,28 +135,23 @@ def fetch_public_profile_browser(username: str, proxy_url: str | None) -> tuple[
         if proxy_url:
             launch_args["proxy"] = _proxy_to_playwright_dict(proxy_url)
         with sync_playwright() as p:
-            browser = p.chromium.launch(**launch_args)
+            context = p.chromium.launch_persistent_context(**launch_args)
             try:
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    ),
-                    locale="en-US",
-                    viewport={"width": 1366, "height": 900},
-                )
-                page = context.new_page()
+                page = context.pages[0] if context.pages else context.new_page()
                 last: tuple[str, str] | None = None
                 for url in urls:
                     try:
-                        page.goto(url, wait_until="domcontentloaded", timeout=25_000)
-                        page.wait_for_timeout(1500)
+                        page.goto(url, wait_until="commit", timeout=25_000)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.info("goto %s failed (%s); reading page anyway", url, exc)
+                    try:
+                        page.wait_for_timeout(2000)
+                        html = page.content()
+                        title = page.title()
                     except Exception as exc:  # noqa: BLE001
                         last = ("blocked", f"Browser navigation failed: {exc}")
                         continue
-                    state, detail = classify_public_profile_html(
-                        username, page.content(), page.title()
-                    )
+                    state, detail = classify_public_profile_html(username, html, title)
                     last = (state, detail)
                     if state in {"ok", "banned", "missing"}:
                         logger.info(
@@ -157,7 +163,7 @@ def fetch_public_profile_browser(username: str, proxy_url: str | None) -> tuple[
                         return last
                 return last
             finally:
-                browser.close()
+                context.close()
     except Exception:
         logger.exception("browser public profile failed for u/%s", username)
         return None
@@ -166,3 +172,4 @@ def fetch_public_profile_browser(username: str, proxy_url: str | None) -> tuple[
             xvfb.kill()
             if os.environ.get("DISPLAY") == ":94":
                 os.environ.pop("DISPLAY", None)
+        shutil.rmtree(user_data_dir, ignore_errors=True)
