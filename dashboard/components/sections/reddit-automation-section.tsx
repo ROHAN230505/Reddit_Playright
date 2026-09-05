@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type RedditAutomationSummary } from "@/lib/api";
 import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
-import { formatDate, percent } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import {
   Badge,
   Card,
@@ -18,8 +18,10 @@ import {
   tableHeadClassName,
   tableRowClassName,
 } from "@/components/legacy-ui";
+import { Pagination } from "@/components/sections/shared";
 
 const STATUS_OPTIONS = ["ALL", "POSTED", "FAILED", "POSTING", "APPROVED"];
+const TABLE_PAGE_SIZE = 10;
 
 export default function RedditAutomationSection() {
   const [summary, setSummary] = useState<RedditAutomationSummary | null>(null);
@@ -175,7 +177,10 @@ export default function RedditAutomationSection() {
           <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
             <Card className="min-w-0 p-4">
               <SectionHeader title="Latest Automated Posts" description="Replies posted by Reddit workers." />
-              <AutomationTable items={summary.latest_posts} emptyTitle="No automated posts match these filters." />
+              <AutomationTable
+                items={summary.latest_posts}
+                emptyTitle="No automated posts match these filters."
+              />
             </Card>
 
             <Card className="min-w-0 p-4">
@@ -198,75 +203,25 @@ export default function RedditAutomationSection() {
 
           <Card className="min-w-0 p-4">
             <SectionHeader title="Latest Manual Posted Replies" description="Replies an operator marked as posted manually." />
-            <AutomationTable items={summary.latest_manual_posts} emptyTitle="No manually posted Reddit replies match these filters." />
+            <AutomationTable
+              items={summary.latest_manual_posts}
+              emptyTitle="No manually posted Reddit replies match these filters."
+            />
           </Card>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
             <Card className="min-w-0 p-4">
               <SectionHeader title="Automation Failures" description="Failed worker attempts and their latest errors." />
-              <AutomationTable items={summary.latest_failures} emptyTitle="No automation failures match these filters." failureMode />
+              <AutomationTable
+                items={summary.latest_failures}
+                emptyTitle="No automation failures match these filters."
+                failureMode
+              />
             </Card>
 
             <Card className="min-w-0 p-4">
               <SectionHeader title="Reddit Accounts" description={`${summary.active_account_count} active of ${summary.account_count} accounts.`} />
-              <div className="mt-4 space-y-3">
-                {summary.accounts.map((account) => (
-                  <div key={account.account_id} className="rounded-md border border-border p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold">u/{account.username}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Slot {account.profile_index ?? "?"} · {account.proxy_label || "no proxy"} · {account.has_cookies ? "cookies saved" : "no cookies"}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-1">
-                        <Badge className={account.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}>
-                          {account.status}
-                        </Badge>
-                        <Badge className={readinessBadgeClass(account.readiness_status)}>
-                          {readinessLabel(account.readiness_status)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                      <div className="flex justify-between gap-3">
-                        <span>Last hour</span>
-                        <span className="font-medium text-foreground">
-                          {account.posts_last_hour} / {account.posts_per_hour_limit}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span>Last day</span>
-                        <span className="font-medium text-foreground">
-                          {account.posts_last_day} / {account.posts_per_day_limit}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span>Cooldown</span>
-                        <span className={account.is_in_cooldown ? "font-medium text-warning" : "font-medium text-emerald-700"}>
-                          {account.is_in_cooldown ? formatDuration(account.seconds_until_eligible) : "Ready"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span>Last action</span>
-                        <span className="max-w-[220px] truncate font-medium text-foreground">
-                          {account.last_action || "n/a"}
-                        </span>
-                      </div>
-                    </div>
-                    {account.readiness_reasons.length > 0 && (
-                      <div className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">
-                        <div className="mb-1 font-semibold uppercase text-muted-foreground">Readiness</div>
-                        <ul className="space-y-1">
-                          {account.readiness_reasons.slice(0, 3).map((reason) => (
-                            <li key={reason} className="break-words">{reason}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <AccountList accounts={summary.accounts} />
             </Card>
           </div>
         </>
@@ -286,16 +241,16 @@ function AutomationHealthBanner({ summary }: { summary: RedditAutomationSummary 
   const state = summary.current_state;
   const toneClass =
     state.state === "ready" || state.state === "posting"
-      ? "border-emerald-200 bg-emerald-50"
+      ? "border-emerald-500/30 bg-emerald-500/10"
       : state.state === "cooldown" || state.state === "idle_empty_queue"
-        ? "border-amber-200 bg-amber-50"
-        : "border-red-200 bg-red-50";
+        ? "border-amber-500/30 bg-amber-500/10"
+        : "border-destructive/30 bg-destructive/10";
   const badgeClass =
     state.state === "ready" || state.state === "posting"
-      ? "border-emerald-200 bg-card text-emerald-700"
+      ? "border-emerald-500/30 bg-background/80 text-emerald-700 dark:text-emerald-400"
       : state.state === "cooldown" || state.state === "idle_empty_queue"
-        ? "border-amber-200 bg-card text-warning"
-        : "border-red-200 bg-card text-danger";
+        ? "border-amber-500/30 bg-background/80 text-amber-800 dark:text-amber-400"
+        : "border-destructive/30 bg-background/80 text-destructive";
 
   return (
     <Card className={`p-4 ${toneClass}`}>
@@ -360,14 +315,14 @@ function readinessLabel(status: string) {
 function readinessBadgeClass(status: string) {
   switch (status) {
     case "ready":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
     case "cooldown":
     case "limited":
     case "attention":
-      return "border-amber-200 bg-amber-50 text-warning";
+      return "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400";
     case "blocked":
     case "disabled":
-      return "border-red-200 bg-red-50 text-danger";
+      return "border-destructive/30 bg-destructive/10 text-destructive";
     default:
       return "";
   }
@@ -443,54 +398,179 @@ function AutomationTable({
   emptyTitle: string;
   failureMode?: boolean;
 }) {
+  const [page, setPage] = useState(1);
+  const paged = paginate(items, page, TABLE_PAGE_SIZE);
+
   if (!items.length) {
     return <StateMessage className="mt-4" title={emptyTitle} compact />;
   }
 
   return (
-    <TableShell className="mt-4" minWidth={920}>
-      <thead className={tableHeadClassName}>
-        <tr>
-          <th className={tableCellClassName}>Reply</th>
-          <th className={tableCellClassName}>Subreddit</th>
-          <th className={tableCellClassName}>Account</th>
-          <th className={tableCellClassName}>Status</th>
-          <th className={tableCellClassName}>Attempts</th>
-          <th className={tableCellClassName}>{failureMode ? "Error" : "Posted"}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => (
-          <tr key={item.reply_id} className={tableRowClassName}>
-            <td className={tableCellClassName}>
-              <div className="font-medium">#{item.reply_id}</div>
-              <div className="mt-1 max-w-md text-xs text-muted-foreground">{item.reply_text_preview}</div>
-            </td>
-            <td className={tableCellClassName}>{item.subreddit ? `r/${item.subreddit}` : "n/a"}</td>
-            <td className={tableCellClassName}>{item.account_username ? `u/${item.account_username}` : "n/a"}</td>
-            <td className={tableCellClassName}>
-              <Badge>{item.status}</Badge>
-            </td>
-            <td className={tableCellClassName}>{item.posting_attempts}</td>
-            <td className={tableCellClassName}>
-              {failureMode ? (
-                <div className="max-w-md break-words text-danger">{item.posting_error || "No error recorded"}</div>
-              ) : (
-                <div>
-                  <div>{formatDate(item.posted_at || item.event_time)}</div>
-                  {item.posted_url && (
-                    <a className="mt-1 block truncate text-xs text-accent underline" href={item.posted_url} target="_blank">
-                      Open
-                    </a>
-                  )}
-                </div>
-              )}
-            </td>
+    <>
+      <TableShell className="mt-4" minWidth={920}>
+        <thead className={tableHeadClassName}>
+          <tr>
+            <th className={tableCellClassName}>Reply</th>
+            <th className={tableCellClassName}>Subreddit</th>
+            <th className={tableCellClassName}>Account</th>
+            <th className={tableCellClassName}>Status</th>
+            <th className={tableCellClassName}>Attempts</th>
+            <th className={tableCellClassName}>{failureMode ? "Error" : "Posted"}</th>
           </tr>
-        ))}
-      </tbody>
-    </TableShell>
+        </thead>
+        <tbody>
+          {paged.items.map((item) => (
+            <tr key={item.reply_id} className={tableRowClassName}>
+              <td className={tableCellClassName}>
+                <div className="font-medium">#{item.reply_id}</div>
+                <div className="mt-1 max-w-md text-xs text-muted-foreground">{item.reply_text_preview}</div>
+              </td>
+              <td className={tableCellClassName}>{item.subreddit ? `r/${item.subreddit}` : "n/a"}</td>
+              <td className={tableCellClassName}>{item.account_username ? `u/${item.account_username}` : "n/a"}</td>
+              <td className={tableCellClassName}>
+                <Badge>{item.status}</Badge>
+              </td>
+              <td className={tableCellClassName}>{item.posting_attempts}</td>
+              <td className={tableCellClassName}>
+                {failureMode ? (
+                  <div className="max-w-md break-words text-destructive">{item.posting_error || "No error recorded"}</div>
+                ) : (
+                  <div>
+                    <div>{formatDate(item.posted_at || item.event_time)}</div>
+                    {item.posted_url && (
+                      <a className="mt-1 block truncate text-xs text-primary underline" href={item.posted_url} target="_blank">
+                        Open
+                      </a>
+                    )}
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </TableShell>
+      {paged.total > TABLE_PAGE_SIZE ? (
+        <Pagination
+          page={paged.page}
+          totalPages={paged.totalPages}
+          total={paged.total}
+          onPage={setPage}
+        />
+      ) : null}
+    </>
   );
+}
+
+function AccountList({
+  accounts,
+}: {
+  accounts: RedditAutomationSummary["accounts"];
+}) {
+  const [page, setPage] = useState(1);
+  const paged = paginate(accounts, page, TABLE_PAGE_SIZE);
+
+  if (!accounts.length) {
+    return (
+      <StateMessage
+        className="mt-4"
+        title="No Reddit accounts"
+        description="Add a Reddit account in Settings to see automation readiness here."
+        compact
+      />
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      {paged.items.map((account) => (
+        <div key={account.account_id} className="rounded-md border border-border p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate font-semibold">u/{account.username}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Slot {account.profile_index ?? "?"} · {account.proxy_label || "no proxy"} · {account.has_cookies ? "cookies saved" : "no cookies"}
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-1">
+              <Badge
+                className={
+                  account.status === "ACTIVE"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : ""
+                }
+              >
+                {account.status}
+              </Badge>
+              <Badge className={readinessBadgeClass(account.readiness_status)}>
+                {readinessLabel(account.readiness_status)}
+              </Badge>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
+            <div className="flex justify-between gap-3">
+              <span>Last hour</span>
+              <span className="font-medium text-foreground">
+                {account.posts_last_hour} / {account.posts_per_hour_limit}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Last day</span>
+              <span className="font-medium text-foreground">
+                {account.posts_last_day} / {account.posts_per_day_limit}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Cooldown</span>
+              <span
+                className={
+                  account.is_in_cooldown
+                    ? "font-medium text-amber-800 dark:text-amber-400"
+                    : "font-medium text-emerald-700 dark:text-emerald-400"
+                }
+              >
+                {account.is_in_cooldown ? formatDuration(account.seconds_until_eligible) : "Ready"}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Last action</span>
+              <span className="max-w-[220px] truncate font-medium text-foreground">
+                {account.last_action || "n/a"}
+              </span>
+            </div>
+          </div>
+          {account.readiness_reasons.length > 0 && (
+            <div className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">
+              <div className="mb-1 font-semibold uppercase text-muted-foreground">Readiness</div>
+              <ul className="space-y-1">
+                {account.readiness_reasons.slice(0, 3).map((reason) => (
+                  <li key={reason} className="break-words">{reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ))}
+      {paged.total > TABLE_PAGE_SIZE ? (
+        <Pagination
+          page={paged.page}
+          totalPages={paged.totalPages}
+          total={paged.total}
+          onPage={setPage}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function paginate<T>(items: T[], page: number, pageSize: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  return {
+    page: safePage,
+    totalPages,
+    total: items.length,
+    items: items.slice((safePage - 1) * pageSize, safePage * pageSize),
+  };
 }
 
 function RatioRow({ label, value, total }: { label: string; value: number; total: number }) {
