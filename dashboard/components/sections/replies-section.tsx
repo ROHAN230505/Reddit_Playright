@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import { api, type ReplySummary } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { visibleRefetchInterval } from "@/lib/query";
 import { formatDate } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
@@ -62,14 +63,16 @@ const columnHelper = createColumnHelper<typeof features, ReplySummary>();
 export default function RepliesSection() {
   const postedQuery = useQuery({
     queryKey: queryKeys.repliesSummary("POSTED", "reddit"),
-    queryFn: () => api.repliesSummary("POSTED", 2000, "reddit"),
-    refetchInterval: 30_000,
+    queryFn: () => api.repliesSummary("POSTED", 800, "reddit"),
+    refetchInterval: visibleRefetchInterval(30_000),
+    refetchIntervalInBackground: false,
     placeholderData: (previous) => previous,
   });
   const failedQuery = useQuery({
     queryKey: queryKeys.repliesSummary("FAILED", "reddit"),
-    queryFn: () => api.repliesSummary("FAILED", 2000, "reddit"),
-    refetchInterval: 30_000,
+    queryFn: () => api.repliesSummary("FAILED", 400, "reddit"),
+    refetchInterval: visibleRefetchInterval(30_000),
+    refetchIntervalInBackground: false,
     placeholderData: (previous) => previous,
   });
 

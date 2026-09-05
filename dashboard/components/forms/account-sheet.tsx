@@ -148,7 +148,7 @@ export function AccountSheet({
     },
     onSuccess: (saved) => {
       toast.success(isEdit ? `Updated ${saved.username}` : `Added ${saved.username}`);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accountsHealth(true) });
+      void queryClient.invalidateQueries({ queryKey: ["accounts-health"] });
       onOpenChange(false);
     },
     onError: (error: unknown) => {

@@ -87,7 +87,7 @@ export default function ProxiesSection() {
 
   useEffect(() => {
     load();
-    const timer = window.setInterval(load, 5000);
+    const timer = window.setInterval(load, 30_000);
     return () => window.clearInterval(timer);
   }, []);
 

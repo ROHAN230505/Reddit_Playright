@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { NoticeProvider } from "@/lib/notice-context";
-import { CommandPalette } from "@/components/shell/command-palette";
 import { IconRail } from "@/components/shell/icon-rail";
 import { TopBar } from "@/components/shell/top-bar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+
+const CommandPalette = dynamic(
+  () => import("@/components/shell/command-palette").then((mod) => mod.CommandPalette),
+  { ssr: false },
+);
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

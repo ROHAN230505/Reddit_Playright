@@ -34,7 +34,7 @@ export default function LogsSection() {
     load().catch(() => {});
     const timer = window.setInterval(() => {
       load().catch(() => {});
-    }, 15000);
+    }, 30_000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedSubreddit]);

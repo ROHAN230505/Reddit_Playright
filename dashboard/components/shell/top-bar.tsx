@@ -84,8 +84,8 @@ function openCommandPalette() {
   window.dispatchEvent(new Event("replyops:command"));
 }
 
-function HealthChip() {
-  const { data } = useAccountsHealth(true);
+function HealthChip({ live }: { live: boolean }) {
+  const { data } = useAccountsHealth(live);
   const accounts = data?.accounts ?? [];
   const banned = accounts.filter(isBanned).length;
   const ready = accounts.filter(accountIsPostable).length;
@@ -117,6 +117,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const tab = searchParams.get("tab");
   const crumbs = pageCrumbs(pathname, tab);
   const showHealth = pathname === "/replies" || (pathname === "/settings" && tab === "accounts");
+  const liveHealth = pathname === "/replies" && tab === "realtime";
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -161,7 +162,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           </nav>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {showHealth ? <HealthChip /> : null}
+          {showHealth ? <HealthChip live={liveHealth} /> : null}
           <Button
             type="button"
             variant="outline"

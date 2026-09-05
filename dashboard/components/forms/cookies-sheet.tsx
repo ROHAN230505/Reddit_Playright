@@ -26,7 +26,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cookiesSchema, type CookiesFormValues } from "@/lib/account-schemas";
 import { api, type RedditAccountItem } from "@/lib/api";
-import { queryKeys } from "@/lib/query-keys";
 
 function uploadErrorMessage(result: {
   ok: boolean;
@@ -73,7 +72,7 @@ export function CookiesSheet({
     },
     onSuccess: (saved) => {
       toast.success(`Cookies saved for ${saved.username ?? account?.username}`);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accountsHealth(true) });
+      void queryClient.invalidateQueries({ queryKey: ["accounts-health"] });
       onOpenChange(false);
     },
     onError: (error: Error) => {

@@ -38,6 +38,7 @@ import {
 import { useAccountsHealth } from "@/lib/hooks/use-accounts-health";
 import { usePendingReplies, useUpdateReply } from "@/lib/hooks/use-replies";
 import { queryKeys } from "@/lib/query-keys";
+import { visibleRefetchInterval } from "@/lib/query";
 import { cn } from "@/lib/utils";
 
 const MIN_SLOT_COUNT = 10;
@@ -246,7 +247,7 @@ export function QueueBoard() {
       ? Number(brandFilter)
       : undefined;
 
-  const healthQuery = useAccountsHealth(true);
+  const healthQuery = useAccountsHealth(false);
   const pendingQuery = usePendingReplies(brandId);
   const brandsQuery = useQuery({
     queryKey: queryKeys.brands(),
@@ -256,7 +257,8 @@ export function QueueBoard() {
   const automationQuery = useQuery({
     queryKey: queryKeys.redditAutomation({ limit: 5 }),
     queryFn: () => api.redditAutomation({ limit: 5 }),
-    refetchInterval: 15_000,
+    refetchInterval: visibleRefetchInterval(15_000),
+    refetchIntervalInBackground: false,
     placeholderData: (previous) => previous,
   });
   const queueQuery = useQuery({
@@ -268,7 +270,8 @@ export function QueueBoard() {
         return { counts: {} as Record<string, number> };
       }
     },
-    refetchInterval: 15_000,
+    refetchInterval: visibleRefetchInterval(15_000),
+    refetchIntervalInBackground: false,
     placeholderData: (previous) => previous,
   });
 
@@ -290,14 +293,24 @@ export function QueueBoard() {
     (pendingQuery.error instanceof Error && pendingQuery.error.message) ||
     null;
 
+  const needsTick = useMemo(
+    () =>
+      accounts.some((account) => {
+        const row = activity[account.id];
+        return Boolean(row?.is_in_cooldown || row?.is_at_hourly_limit || row?.is_at_daily_limit);
+      }),
+    [accounts, activity],
+  );
+
   useEffect(() => {
+    if (!needsTick) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [needsTick]);
 
   const invalidateBoard = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["replies"] });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.accountsHealth(true) });
+    void queryClient.invalidateQueries({ queryKey: ["accounts-health"] });
     void queryClient.invalidateQueries({ queryKey: queryKeys.workerQueue("reddit") });
     void queryClient.invalidateQueries({
       queryKey: queryKeys.redditAutomation({ limit: 5 }),
@@ -323,7 +336,7 @@ export function QueueBoard() {
   // Build slot assignments: for each profile_index, show every enabled account
   // at that slot. Older data can have duplicate profile slots, and collapsing
   // to one account hides real automation accounts from the queue page.
-  const slots = useMemo(() => {
+  const assignedSlots = useMemo(() => {
     const redditAccounts = accounts.filter(
       (account) => (account.platform || "reddit") === "reddit",
     );
@@ -390,7 +403,6 @@ export function QueueBoard() {
       slotTotal: number;
       account: RedditAccountItem | null;
       reply: ReplyItem | null;
-      state: SlotState;
     }[] = [];
     const appendSlotCard = (
       slot: number,
@@ -529,10 +541,7 @@ export function QueueBoard() {
           }
         }
       }
-      const state = account
-        ? deriveSlotState(account, activity[account.id], nowMs)
-        : { kind: "disabled" as const };
-      result.push({ slot, slotPosition, slotTotal, account, reply, state });
+      result.push({ slot, slotPosition, slotTotal, account, reply });
     };
     for (let slot = 0; slot < slotCount; slot++) {
       const slotAccounts = accountsBySlot.get(slot) ?? [];
@@ -556,7 +565,18 @@ export function QueueBoard() {
       );
     }
     return result;
-  }, [accounts, pending, activity, nowMs, brands]);
+  }, [accounts, pending, activity, brands]);
+
+  const slots = useMemo(
+    () =>
+      assignedSlots.map((row) => ({
+        ...row,
+        state: row.account
+          ? deriveSlotState(row.account, activity[row.account.id], nowMs)
+          : ({ kind: "disabled" } as const),
+      })),
+    [assignedSlots, activity, nowMs],
+  );
 
   if (healthQuery.isPending && !healthQuery.data) {
     return <LoadingGrid />;

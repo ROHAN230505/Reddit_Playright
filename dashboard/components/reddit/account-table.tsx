@@ -136,7 +136,7 @@ function AccountActions({
       toast.success(
         updated.is_enabled ? `Enabled ${updated.username}` : `Disabled ${updated.username}`,
       );
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accountsHealth(true) });
+      void queryClient.invalidateQueries({ queryKey: ["accounts-health"] });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to update account");
@@ -146,7 +146,7 @@ function AccountActions({
     mutationFn: () => api.reverifyAccount(account.id),
     onSuccess: () => {
       toast.success(`Reverify started for ${account.username}`);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accountsHealth(true) });
+      void queryClient.invalidateQueries({ queryKey: ["accounts-health"] });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Reverify failed");
@@ -200,7 +200,7 @@ function ErrorBanner({ onRetry }: { onRetry: () => void }) {
 }
 
 export function AccountTable() {
-  const { data, isPending, isError, refetch } = useAccountsHealth(true);
+  const { data, isPending, isError, refetch } = useAccountsHealth(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<RedditAccountItem | null>(null);
   const [cookiesAccount, setCookiesAccount] = useState<RedditAccountItem | null>(null);

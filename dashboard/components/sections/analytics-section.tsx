@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { visibleRefetchInterval } from "@/lib/query";
 import { formatDate } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +13,8 @@ export default function AnalyticsSection() {
   const { data: summary } = useQuery({
     queryKey: queryKeys.dashboardSummary(),
     queryFn: () => api.summary(),
-    refetchInterval: 30_000,
+    refetchInterval: visibleRefetchInterval(30_000),
+    refetchIntervalInBackground: false,
     placeholderData: (previous) => previous,
   });
 
