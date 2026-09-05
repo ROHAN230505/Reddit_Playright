@@ -43,11 +43,11 @@ function relativeTime(iso: string | null | undefined): string {
 function riskTone(level?: string): string {
   switch ((level || "").toLowerCase()) {
     case "high":
-      return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+      return "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/20";
     case "medium":
-      return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+      return "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20";
     default:
-      return "bg-slate-100 text-slate-600 ring-1 ring-slate-200";
+      return "bg-muted text-muted-foreground ring-1 ring-border";
   }
 }
 
@@ -155,11 +155,11 @@ export default function InstagramSection() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold">Instagram</h2>
-              <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-pink-600 ring-1 ring-pink-200">
+              <span className="rounded-full bg-pink-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-pink-400 ring-1 ring-pink-500/20">
                 Triage operator
               </span>
             </div>
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               DM &amp; comment triage with human-approval gating, plus curator
               feed-seeding. Runs as its own service; this view talks to it through
               the dashboard. Login &amp; advanced controls live in the{" "}
@@ -190,15 +190,15 @@ export default function InstagramSection() {
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 tab === t.key
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               {t.label}
               {t.key === "approvals" && totalApprovals > 0 && (
                 <Badge
                   className={
-                    tab === t.key ? "bg-white/20 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300"
+                    tab === t.key ? "bg-white/20 text-white" : "bg-card text-foreground ring-1 ring-border"
                   }
                 >
                   {totalApprovals}
@@ -219,23 +219,23 @@ export default function InstagramSection() {
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="p-4">
-              <div className="text-xs font-medium uppercase tracking-wide text-muted">Pending approvals</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pending approvals</div>
               <div className="mt-1 text-3xl font-semibold tracking-tight">{totalApprovals}</div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs font-medium uppercase tracking-wide text-muted">Items in queues</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Items in queues</div>
               <div className="mt-1 text-3xl font-semibold tracking-tight">{totalQueued}</div>
             </Card>
             <Card className="p-4 sm:col-span-2 lg:col-span-2">
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Queues</div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Queues</div>
               {Object.keys(queues).length === 0 ? (
-                <div className="text-sm text-muted">No queued items.</div>
+                <div className="text-sm text-muted-foreground">No queued items.</div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(queues).map(([name, count]) => (
                     <span
                       key={name}
-                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+                      className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
                     >
                       {name.replace(/_/g, " ")}: <span className="font-semibold">{count}</span>
                     </span>
@@ -248,7 +248,7 @@ export default function InstagramSection() {
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Recent actions</div>
             {actions.length === 0 ? (
-              <div className="text-sm text-muted">No actions logged yet.</div>
+              <div className="text-sm text-muted-foreground">No actions logged yet.</div>
             ) : (
               <div className="space-y-1.5">
                 {actions.map((a) => (
@@ -258,7 +258,7 @@ export default function InstagramSection() {
                     />
                     <span className="font-medium">{a.action_type}</span>
                     {a.error_message && <span className="text-rose-600">— {a.error_message}</span>}
-                    <span className="ml-auto text-muted">{relativeTime(a.executed_at)}</span>
+                    <span className="ml-auto text-muted-foreground">{relativeTime(a.executed_at)}</span>
                   </div>
                 ))}
               </div>
@@ -267,7 +267,7 @@ export default function InstagramSection() {
         </div>
       ) : tab === "approvals" ? (
         approvals.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
             No pending approvals. Drafted DMs/comments awaiting human sign-off appear here.
           </Card>
         ) : (
@@ -275,9 +275,9 @@ export default function InstagramSection() {
             {approvals.map((a) => (
               <Card key={a.id} className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-mono text-slate-500">#{a.id}</span>
+                  <span className="font-mono text-muted-foreground">#{a.id}</span>
                   {a.action_type && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700">
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
                       {a.action_type}
                     </span>
                   )}
@@ -286,24 +286,24 @@ export default function InstagramSection() {
                       risk: {a.risk_level}
                     </span>
                   )}
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-200">
+                  <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-medium text-blue-400 ring-1 ring-blue-500/20">
                     {a.status}
                   </span>
-                  <span className="ml-auto text-muted">{relativeTime(a.created_at)}</span>
+                  <span className="ml-auto text-muted-foreground">{relativeTime(a.created_at)}</span>
                 </div>
 
                 {a.proposed_text && (
-                  <div className="rounded-md border border-slate-200 bg-white p-3 text-sm leading-snug whitespace-pre-wrap">
+                  <div className="rounded-md border border-border bg-card p-3 text-sm leading-snug whitespace-pre-wrap text-foreground">
                     {a.proposed_text}
                   </div>
                 )}
                 {a.target_id && (
-                  <div className="text-xs text-muted">target: {a.target_id}</div>
+                  <div className="text-xs text-muted-foreground">target: {a.target_id}</div>
                 )}
                 {a.risk_flags && a.risk_flags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {a.risk_flags.map((f) => (
-                      <span key={f} className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                      <span key={f} className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400">
                         {f}
                       </span>
                     ))}
@@ -333,7 +333,7 @@ export default function InstagramSection() {
         )
       ) : tab === "threads" ? (
         threads.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted">No DM threads ingested yet.</Card>
+          <Card className="p-8 text-center text-sm text-muted-foreground">No DM threads ingested yet.</Card>
         ) : (
           <div className="space-y-2">
             {threads.map((t) => (
@@ -341,40 +341,40 @@ export default function InstagramSection() {
                 {!t.is_read && <span className="h-2 w-2 rounded-full bg-pink-500" title="unread" />}
                 <span className="font-medium">{participantLabel(t)}</span>
                 {t.priority_queue && (
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                     {t.priority_queue.replace(/_/g, " ")}
                   </span>
                 )}
                 {t.unread_count > 0 && (
-                  <Badge className="bg-pink-50 text-pink-700 ring-1 ring-pink-200">{t.unread_count} new</Badge>
+                  <Badge className="bg-pink-500/15 text-pink-400 ring-1 ring-pink-500/20">{t.unread_count} new</Badge>
                 )}
-                <span className="ml-auto text-xs text-muted">{relativeTime(t.last_message_at)}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{relativeTime(t.last_message_at)}</span>
               </Card>
             ))}
           </div>
         )
       ) : tab === "comments" ? (
         comments.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted">No unreplied comments ingested yet.</Card>
+          <Card className="p-8 text-center text-sm text-muted-foreground">No unreplied comments ingested yet.</Card>
         ) : (
           <div className="space-y-2">
             {comments.map((c) => (
               <Card key={c.id} className="space-y-1.5 p-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-medium text-slate-700">@{c.username}</span>
+                  <span className="font-medium text-foreground">@{c.username}</span>
                   {c.priority_queue && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                       {c.priority_queue.replace(/_/g, " ")}
                     </span>
                   )}
                   {c.is_replied && (
-                    <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] text-teal-700 ring-1 ring-teal-200">
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] text-emerald-400 ring-1 ring-emerald-500/20">
                       replied
                     </span>
                   )}
-                  <span className="ml-auto text-muted">{relativeTime(c.timestamp)}</span>
+                  <span className="ml-auto text-muted-foreground">{relativeTime(c.timestamp)}</span>
                 </div>
-                <div className="text-sm whitespace-pre-wrap text-slate-700">{c.text}</div>
+                <div className="text-sm whitespace-pre-wrap text-foreground">{c.text}</div>
               </Card>
             ))}
           </div>
@@ -384,26 +384,26 @@ export default function InstagramSection() {
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Packs</div>
             {packs.length === 0 ? (
-              <div className="text-sm text-muted">No curator packs configured.</div>
+              <div className="text-sm text-muted-foreground">No curator packs configured.</div>
             ) : (
               <div className="space-y-2">
                 {packs.map((p) => (
-                  <div key={p.pack_id} className="flex flex-wrap items-center gap-2 rounded-md border border-slate-200 p-2.5 text-sm">
+                  <div key={p.pack_id} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2.5 text-sm">
                     <span
-                      className={`h-2 w-2 rounded-full ${p.enabled ? "bg-emerald-500" : "bg-slate-300"}`}
+                      className={`h-2 w-2 rounded-full ${p.enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
                       title={p.enabled ? "enabled" : "disabled"}
                     />
                     <span className="font-medium">{p.label || p.pack_id}</span>
-                    <span className="text-xs text-muted">every {p.interval_minutes}m</span>
+                    <span className="text-xs text-muted-foreground">every {p.interval_minutes}m</span>
                     {p.allow_public_actions && (
-                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">public actions</span>
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400">public actions</span>
                     )}
                     {p.last_status && (
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         {p.last_status}
                       </span>
                     )}
-                    <span className="ml-auto text-xs text-muted">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       {p.last_run_age || relativeTime(p.last_run_finished_at)}
                     </span>
                   </div>
@@ -415,17 +415,17 @@ export default function InstagramSection() {
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Recent runs</div>
             {runs.length === 0 ? (
-              <div className="text-sm text-muted">No curator runs yet.</div>
+              <div className="text-sm text-muted-foreground">No curator runs yet.</div>
             ) : (
               <div className="space-y-1.5">
                 {runs.map((r) => (
                   <div key={r.id} className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="font-medium text-slate-700">{r.pack_id}</span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">{r.status}</span>
-                    <span className="text-muted">
+                    <span className="font-medium text-foreground">{r.pack_id}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{r.status}</span>
+                    <span className="text-muted-foreground">
                       browse {r.browse_count} · like {r.like_count} · save {r.save_count} · follow {r.follow_count}
                     </span>
-                    <span className="ml-auto text-muted">{relativeTime(r.started_at)}</span>
+                    <span className="ml-auto text-muted-foreground">{relativeTime(r.started_at)}</span>
                   </div>
                 ))}
               </div>
@@ -435,7 +435,7 @@ export default function InstagramSection() {
       ) : (
         // accounts
         accounts.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
             No Instagram accounts yet. Add and log in accounts from the{" "}
             <a href={IG_UI_URL} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline">
               full operator UI ↗
@@ -449,15 +449,15 @@ export default function InstagramSection() {
               return (
                 <Card key={acc.id} className="flex flex-wrap items-center gap-3 p-3">
                   <span
-                    className={`h-2 w-2 rounded-full ${acc.is_logged_in ? "bg-emerald-500" : "bg-slate-300"}`}
+                    className={`h-2 w-2 rounded-full ${acc.is_logged_in ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
                     title={acc.is_logged_in ? "logged in" : "not logged in"}
                   />
                   <span className="font-medium">@{acc.username}</span>
                   {!acc.enabled && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">disabled</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">disabled</span>
                   )}
                   {acc.proxy_server && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono text-slate-600">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                       {acc.proxy_server}
                     </span>
                   )}
@@ -468,8 +468,8 @@ export default function InstagramSection() {
                       <span
                         className={`rounded-md px-2 py-1 font-medium ${
                           st.hour_remaining === 0
-                            ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-                            : "bg-slate-100 text-slate-700"
+                            ? "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/20"
+                            : "bg-muted text-foreground"
                         }`}
                         title="Public actions in the last hour (cap 50)"
                       >
@@ -478,8 +478,8 @@ export default function InstagramSection() {
                       <span
                         className={`rounded-md px-2 py-1 font-medium ${
                           st.day_remaining === 0
-                            ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-                            : "bg-slate-100 text-slate-700"
+                            ? "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/20"
+                            : "bg-muted text-foreground"
                         }`}
                         title="Public actions in the last 24h (cap 300)"
                       >

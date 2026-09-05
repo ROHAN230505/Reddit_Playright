@@ -25,7 +25,7 @@ export function DashboardTabs({
   const selected = activeTab(tabs, searchParams.get("tab"));
 
   return (
-    <div className="rounded-lg border border-border bg-white p-2 shadow-soft">
+    <div className="rounded-lg border border-border bg-card p-2 shadow-soft">
       <div className="flex gap-2 overflow-x-auto">
         {tabs.map((tab) => {
           const isSelected = tab.key === selected.key;
@@ -36,8 +36,8 @@ export function DashboardTabs({
               className={cn(
                 "min-w-fit rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isSelected
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               {tab.label}
@@ -45,7 +45,7 @@ export function DashboardTabs({
           );
         })}
       </div>
-      <div className="px-1 pt-2 text-xs text-muted">{selected.description}</div>
+      <div className="px-1 pt-2 text-xs text-muted-foreground">{selected.description}</div>
     </div>
   );
 }

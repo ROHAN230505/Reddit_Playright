@@ -40,7 +40,7 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        panel: "#ffffff",
+        panel: "hsl(var(--card))",
         warning: "#b45309",
         danger: "#b91c1c",
       },

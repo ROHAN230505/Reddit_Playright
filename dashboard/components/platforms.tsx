@@ -16,16 +16,16 @@ export type PlatformDef = {
   external?: boolean;
 };
 
-export const PLATFORMS: PlatformDef[] = [
+const ALL_PLATFORMS: PlatformDef[] = [
   {
     href: "/replies",
     label: "Reddit",
     blurb: "Reddit threads",
     platform: "reddit",
     Icon: RedditIcon,
-    chipBg: "bg-orange-50",
-    chipText: "text-orange-600",
-    chipRing: "ring-orange-100",
+    chipBg: "bg-orange-500/10",
+    chipText: "text-orange-500",
+    chipRing: "ring-orange-500/20",
   },
   {
     href: "/godlike",
@@ -33,9 +33,9 @@ export const PLATFORMS: PlatformDef[] = [
     blurb: "GodlikeProductions",
     platform: "glp",
     Icon: GodlikeIcon,
-    chipBg: "bg-violet-50",
-    chipText: "text-violet-600",
-    chipRing: "ring-violet-100",
+    chipBg: "bg-violet-500/10",
+    chipText: "text-violet-400",
+    chipRing: "ring-violet-500/20",
   },
   {
     href: "/4chan",
@@ -43,9 +43,9 @@ export const PLATFORMS: PlatformDef[] = [
     blurb: "Image boards",
     platform: "chan",
     Icon: FourChanIcon,
-    chipBg: "bg-emerald-50",
-    chipText: "text-emerald-600",
-    chipRing: "ring-emerald-100",
+    chipBg: "bg-emerald-500/10",
+    chipText: "text-emerald-400",
+    chipRing: "ring-emerald-500/20",
   },
   {
     // Native in-app section. It reads the instagram (doomscroller) service's
@@ -57,8 +57,18 @@ export const PLATFORMS: PlatformDef[] = [
     blurb: "DMs & comments triage",
     platform: "instagram",
     Icon: InstagramIcon,
-    chipBg: "bg-pink-50",
-    chipText: "text-pink-600",
-    chipRing: "ring-pink-100",
+    chipBg: "bg-pink-500/10",
+    chipText: "text-pink-400",
+    chipRing: "ring-pink-500/20",
   },
 ];
+
+const ENABLED_PLATFORMS = (process.env.NEXT_PUBLIC_ENABLED_PLATFORMS || "reddit")
+  .split(",")
+  .map((item) => item.trim().toLowerCase())
+  .filter(Boolean);
+
+export const PLATFORMS: PlatformDef[] =
+  ENABLED_PLATFORMS.includes("all")
+    ? ALL_PLATFORMS
+    : ALL_PLATFORMS.filter((item) => ENABLED_PLATFORMS.includes(item.platform));

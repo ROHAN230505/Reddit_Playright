@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ProxiesSection from "@/components/proxies-section";
 import { AccountTable } from "@/components/reddit/account-table";
+import BrandSection from "@/components/sections/brand-section";
 import SubredditSection from "@/components/sections/subreddits-section";
 import { activeTab, DashboardTabs, type DashboardTab } from "@/components/sections/dashboard-tabs";
 
@@ -23,6 +24,11 @@ const TABS: DashboardTab[] = [
     label: "Proxies",
     description: "Manage proxy inventory and connection checks.",
   },
+  {
+    key: "brand",
+    label: "Brand",
+    description: "Products, topics, and which subreddits each brand owns.",
+  },
 ];
 
 export default function SettingsSection() {
@@ -39,6 +45,7 @@ export default function SettingsSection() {
       )}
       {tab.key === "accounts" && <AccountTable />}
       {tab.key === "proxies" && <ProxiesSection />}
+      {tab.key === "brand" && <BrandSection />}
     </div>
   );
 }

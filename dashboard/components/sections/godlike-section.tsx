@@ -6,6 +6,7 @@ import { api, type RedditAccountItem, type ReplyItem } from "@/lib/api";
 import { useNotice } from "@/lib/notice-context";
 import { RecentlyPostedPanel } from "@/components/recently-posted";
 import { PostedAnalytics } from "@/components/posted-analytics";
+import { GodlikeTabs } from "@/components/sections/shared";
 
 type StatusTab = "QUEUED" | "POSTED";
 
@@ -21,21 +22,21 @@ function isPosted(status: string) {
 
 function statusTone(status: string): string {
   return isPosted(status)
-    ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
-    : "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
+    ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+    : "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/20";
 }
 
 function accountStatusTone(status: string): string {
   switch (status) {
     case "ACTIVE":
-      return "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
+      return "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20";
     case "FAILED":
     case "NEEDS_REAUTH":
-      return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+      return "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/20";
     case "DISABLED":
-      return "bg-slate-50 text-slate-500 ring-1 ring-slate-200";
+      return "bg-muted text-muted-foreground ring-1 ring-border";
     default:
-      return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+      return "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20";
   }
 }
 
@@ -195,21 +196,21 @@ export default function GodlikeSection() {
           return (
             <Card key={reply.reply_id} className="space-y-3 p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-mono text-slate-500">#{reply.reply_id}</span>
+                <span className="font-mono text-muted-foreground">#{reply.reply_id}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusTone(reply.status)}`}>
                   {posted ? "Posted" : "Queued"}
                 </span>
-                <span className="rounded bg-purple-100 px-1.5 py-0.5 font-mono text-[10px] text-purple-700">
+                <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-400">
                   glp/{reply.platform_section ?? "forum"}
                 </span>
                 {reply.includes_promo && (
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
-                    sentx.ai promo
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/20">
+                    promo
                   </span>
                 )}
-                <span className="text-muted">{relativeTime(reply.created_at)}</span>
+                <span className="text-muted-foreground">{relativeTime(reply.created_at)}</span>
                 {reply.posted_at && (
-                  <span className="text-muted" title={reply.posted_at}>
+                  <span className="text-muted-foreground" title={reply.posted_at}>
                     posted {relativeTime(reply.posted_at)}
                   </span>
                 )}
@@ -218,15 +219,15 @@ export default function GodlikeSection() {
                     href={reply.target_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="ml-auto text-xs text-blue-600 underline-offset-2 hover:underline"
+                    className="ml-auto text-xs text-primary underline-offset-2 hover:underline"
                   >
                     Open thread ↗
                   </a>
                 )}
               </div>
 
-              <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-                <div className="mb-1 text-xs font-semibold uppercase text-muted">
+              <div className="rounded-md bg-muted p-3 text-sm text-foreground">
+                <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
                   In reply to {reply.comment_author ? `@${reply.comment_author}` : "the OP"}
                 </div>
                 <div className="line-clamp-4 whitespace-pre-wrap">{reply.comment_text}</div>
@@ -237,7 +238,7 @@ export default function GodlikeSection() {
                   <textarea
                     value={draftText}
                     onChange={(e) => setDraftText(e.target.value)}
-                    className="min-h-[100px] w-full rounded-md border border-border bg-white p-2 text-sm"
+                    className="min-h-[100px] w-full rounded-md border border-border bg-card p-2 text-sm text-foreground"
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => saveEdit(reply.reply_id)}>
@@ -256,13 +257,13 @@ export default function GodlikeSection() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-md border border-slate-200 bg-white p-3 text-sm leading-snug">
+                <div className="rounded-md border border-border bg-card p-3 text-sm leading-snug text-foreground">
                   {reply.reply_text}
                 </div>
               )}
 
               {reply.posting_error && (
-                <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
                   {reply.posting_error}
                 </div>
               )}
@@ -298,6 +299,7 @@ export default function GodlikeSection() {
 
   return (
     <div className="space-y-5">
+      <GodlikeTabs />
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
@@ -305,15 +307,15 @@ export default function GodlikeSection() {
               <h2 className="text-lg font-semibold">Godlike Productions</h2>
               {autoApprove === true && (
                 <span
-                  className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-accent ring-1 ring-teal-200"
+                  className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-400 ring-1 ring-emerald-500/20"
                   title="GLP drafts queue automatically. The Playwright worker (with a GLP account assigned) auto-claims and posts them."
                 >
                   Auto-post: ON
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted">
-              AI-generated GLP forum replies promoting sentx.ai, scoped to
+            <p className="text-sm text-muted-foreground">
+              AI-generated GLP forum replies promoting the active brand, scoped to
               tech/AI threads only. Reading is anonymous; posting requires a
               logged-in GLP account on a residential proxy. New drafts queue
               automatically and the Playwright worker posts them — operator can
@@ -321,17 +323,17 @@ export default function GodlikeSection() {
             </p>
             {topics.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="font-semibold uppercase text-muted">Targeting</span>
+                <span className="font-semibold uppercase text-muted-foreground">Targeting</span>
                 {topics.map((t) => (
                   <span
                     key={t}
-                    className="rounded bg-purple-100 px-1.5 py-0.5 font-mono text-[10px] text-purple-700"
+                    className="rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-400"
                     title={`Scraping https://www.godlikeproductions.com/topics/${t}`}
                   >
                     {t}
                   </span>
                 ))}
-                <span className="text-muted">(GLP has no dedicated AI forum)</span>
+                <span className="text-muted-foreground">(GLP has no dedicated AI forum)</span>
               </div>
             )}
           </div>
@@ -359,8 +361,8 @@ export default function GodlikeSection() {
               onClick={() => setTab(s)}
               className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 tab === s
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               {TAB_LABEL[s]}
@@ -368,7 +370,7 @@ export default function GodlikeSection() {
                 className={
                   tab === s
                     ? "bg-white/20 text-white"
-                    : "bg-white text-slate-700 ring-1 ring-slate-300"
+                    : "bg-card text-foreground ring-1 ring-border"
                 }
               >
                 {counts[s]}
@@ -382,7 +384,7 @@ export default function GodlikeSection() {
         <Card className="space-y-3 p-5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">GLP accounts ({accounts.length})</h3>
-            <span className="text-xs text-muted">
+            <span className="text-xs text-muted-foreground">
               Worker posts only on these · cadence 2/hr · 12/day
             </span>
           </div>
@@ -390,32 +392,32 @@ export default function GodlikeSection() {
             {accounts.map((acc) => (
               <div
                 key={acc.id}
-                className="flex flex-col gap-1.5 rounded-md border border-slate-200 bg-white p-3 text-xs"
+                className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-3 text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-slate-700">{acc.username}</span>
+                  <span className="font-mono font-medium text-foreground">{acc.username}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${accountStatusTone(acc.status)}`}>
                     {acc.status}
                   </span>
                   {!acc.is_enabled && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                       disabled
                     </span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                  <span className="font-semibold uppercase text-muted">Forums</span>
+                  <span className="font-semibold uppercase text-muted-foreground">Forums</span>
                   {acc.assigned_sections && acc.assigned_sections.length > 0 ? (
                     acc.assigned_sections.map((s) => (
                       <span
                         key={s}
-                        className="rounded bg-purple-100 px-1.5 py-0.5 font-mono text-[10px] text-purple-700"
+                        className="rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-400"
                       >
                         {s}
                       </span>
                     ))
                   ) : (
-                    <span className="text-muted">all (unscoped)</span>
+                    <span className="text-muted-foreground">all (unscoped)</span>
                   )}
                 </div>
               </div>
@@ -436,15 +438,15 @@ export default function GodlikeSection() {
           <RecentlyPostedPanel posted={replies} subtitle="Godlike · newest first" />
         </div>
       ) : replies.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted">
+        <Card className="p-8 text-center text-sm text-muted-foreground">
           <span className="block">
             No queued GLP replies. New drafts queue here for the Playwright
             worker. The Celery beat scrapes every 15 minutes, or click{" "}
             <em>Run scrape now</em> above.
           </span>
-          <span className="mt-3 block text-xs text-amber-700">
+          <span className="mt-3 block text-xs text-amber-400">
             Empty? Unlike Reddit (hosted Apify API), GLP scraping needs
-            Playwright + a residential proxy (<code className="rounded bg-slate-100 px-1">GLP_PROXY_URL</code>)
+            Playwright + a residential proxy (<code className="rounded bg-muted px-1">GLP_PROXY_URL</code>)
             to get past Cloudflare. If those aren&apos;t configured the
             scheduled scrape fails — check the Logs / scrape-runs for the error.
           </span>

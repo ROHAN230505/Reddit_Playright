@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { type ReplySummary } from "@/lib/api";
-import { Button, Card } from "@/components/legacy-ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 // Backend returns naive UTC datetimes (no tz suffix). JS parses those as
 // LOCAL time, so "Xm ago" silently breaks for non-UTC timezones. Force UTC.
@@ -26,12 +27,12 @@ function formatTimeAgo(ms: number): string {
 
 function platformBadge(reply: ReplySummary) {
   if (reply.platform === "glp") {
-    return { className: "bg-violet-100 text-violet-700", label: `glp/${reply.platform_section ?? "forum"}` };
+    return { className: "bg-violet-500/15 text-violet-400", label: `glp/${reply.platform_section ?? "forum"}` };
   }
   if (reply.platform === "chan") {
-    return { className: "bg-emerald-100 text-emerald-700", label: `/${reply.platform_section ?? reply.subreddit ?? "board"}/` };
+    return { className: "bg-emerald-500/15 text-emerald-400", label: `/${reply.platform_section ?? reply.subreddit ?? "board"}/` };
   }
-  return { className: "bg-orange-100 text-orange-700", label: `r/${reply.subreddit}` };
+  return { className: "bg-orange-500/15 text-orange-400", label: `r/${reply.subreddit}` };
 }
 
 /**
@@ -72,8 +73,8 @@ export function RecentlyPostedPanel({
     <Card className="p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-          <p className="text-xs text-muted">{subtitle} · {sorted.length} total</p>
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          <p className="text-xs text-muted-foreground">{subtitle} · {sorted.length} total</p>
         </div>
         {sorted.length > 10 && (
           <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
@@ -82,9 +83,9 @@ export function RecentlyPostedPanel({
         )}
       </div>
       {sorted.length === 0 ? (
-        <p className="text-xs text-muted">No posted replies yet.</p>
+        <p className="text-xs text-muted-foreground">No posted replies yet.</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {visible.map((reply) => {
             const postedMs = reply.posted_at ? parseServerUtc(reply.posted_at) : null;
             const postedUrl = reply.posted_url?.trim() || null;
@@ -95,11 +96,11 @@ export function RecentlyPostedPanel({
                   <span className={"inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] " + badge.className}>
                     {badge.label}
                   </span>
-                  <span className="truncate text-slate-700" title={reply.reply_text}>
+                  <span className="truncate text-foreground" title={reply.reply_text}>
                     {reply.reply_text}
                   </span>
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-xs text-muted">
+                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
                   {postedMs ? formatTimeAgo(postedMs) : ""}
                 </span>
                 <span className="w-[140px] shrink-0 text-right text-xs">
@@ -109,12 +110,12 @@ export function RecentlyPostedPanel({
                       target="_blank"
                       rel="noreferrer noopener"
                       title="Open the posted reply"
-                      className="text-blue-600 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       View ↗
                     </a>
                   ) : (
-                    <span className="italic text-slate-400" title="No posted URL captured for this reply">
+                    <span className="italic text-muted-foreground" title="No posted URL captured for this reply">
                       link not available
                     </span>
                   )}

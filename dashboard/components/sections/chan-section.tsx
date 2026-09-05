@@ -21,8 +21,8 @@ function isPosted(status: string) {
 
 function statusTone(status: string): string {
   return isPosted(status)
-    ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
-    : "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
+    ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+    : "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/20";
 }
 
 function relativeTime(iso: string | null | undefined): string {
@@ -164,21 +164,21 @@ export default function ChanSection() {
           return (
             <Card key={reply.reply_id} className="space-y-3 p-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-mono text-slate-500">#{reply.reply_id}</span>
+                <span className="font-mono text-muted-foreground">#{reply.reply_id}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusTone(reply.status)}`}>
                   {posted ? "Posted" : "Queued"}
                 </span>
-                <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] text-emerald-700">
+                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400">
                   /{board}/
                 </span>
                 {reply.includes_promo && (
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
-                    sentx.ai promo
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/20">
+                    promo
                   </span>
                 )}
-                <span className="text-muted">{relativeTime(reply.created_at)}</span>
+                <span className="text-muted-foreground">{relativeTime(reply.created_at)}</span>
                 {reply.posted_at && (
-                  <span className="text-muted" title={reply.posted_at}>
+                  <span className="text-muted-foreground" title={reply.posted_at}>
                     posted {relativeTime(reply.posted_at)}
                   </span>
                 )}
@@ -187,15 +187,15 @@ export default function ChanSection() {
                     href={reply.target_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="ml-auto text-xs text-blue-600 underline-offset-2 hover:underline"
+                    className="ml-auto text-xs text-primary underline-offset-2 hover:underline"
                   >
                     Open thread ↗
                   </a>
                 )}
               </div>
 
-              <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-                <div className="mb-1 text-xs font-semibold uppercase text-muted">
+              <div className="rounded-md bg-muted p-3 text-sm text-foreground">
+                <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
                   In reply to {reply.comment_author ? reply.comment_author : "the OP"}
                 </div>
                 <div className="line-clamp-4 whitespace-pre-wrap">{reply.comment_text}</div>
@@ -206,7 +206,7 @@ export default function ChanSection() {
                   <textarea
                     value={draftText}
                     onChange={(e) => setDraftText(e.target.value)}
-                    className="min-h-[100px] w-full rounded-md border border-border bg-white p-2 text-sm"
+                    className="min-h-[100px] w-full rounded-md border border-border bg-card p-2 text-sm text-foreground"
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => saveEdit(reply.reply_id)}>
@@ -225,13 +225,13 @@ export default function ChanSection() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-md border border-slate-200 bg-white p-3 font-mono text-sm leading-snug whitespace-pre-wrap">
+                <div className="rounded-md border border-border bg-card p-3 font-mono text-sm leading-snug whitespace-pre-wrap text-foreground">
                   {reply.reply_text}
                 </div>
               )}
 
               {reply.posting_error && (
-                <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
                   {reply.posting_error}
                 </div>
               )}
@@ -274,25 +274,25 @@ export default function ChanSection() {
               <h2 className="text-lg font-semibold">4chan</h2>
               {config?.auto_approve === true && (
                 <span
-                  className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-accent ring-1 ring-teal-200"
+                  className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-400 ring-1 ring-emerald-500/20"
                   title="4chan drafts queue automatically. The Playwright worker (with a chan account assigned) auto-claims and posts them."
                 >
                   Auto-post: ON
                 </span>
               )}
               {config?.boards && (
-                <span className="text-xs text-muted">
+                <span className="text-xs text-muted-foreground">
                   boards:{" "}
                   {config.boards.map((b) => (
-                    <span key={b} className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] text-emerald-700">
+                    <span key={b} className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400">
                       /{b}/
                     </span>
                   ))}
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted">
-              AI-generated 4chan replies promoting sentx.ai. Reading uses the
+            <p className="text-sm text-muted-foreground">
+              AI-generated 4chan replies promoting the active brand. Reading uses the
               public JSON API (no proxy needed for ingest); posting needs a
               Playwright worker — install a 4chan Pass cookie to skip per-post
               captchas. Drafts queue automatically; operator can still edit.
@@ -322,8 +322,8 @@ export default function ChanSection() {
               onClick={() => setTab(s)}
               className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 tab === s
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               {TAB_LABEL[s]}
@@ -331,7 +331,7 @@ export default function ChanSection() {
                 className={
                   tab === s
                     ? "bg-white/20 text-white"
-                    : "bg-white text-slate-700 ring-1 ring-slate-300"
+                    : "bg-card text-foreground ring-1 ring-border"
                 }
               >
                 {counts[s]}
@@ -353,7 +353,7 @@ export default function ChanSection() {
           <RecentlyPostedPanel posted={replies} subtitle="4chan · newest first" />
         </div>
       ) : replies.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted">
+        <Card className="p-8 text-center text-sm text-muted-foreground">
           No queued 4chan replies. Everything auto-posts — new drafts queue here
           briefly, then the worker posts them. The Celery beat scrapes every 5
           minutes, or click <em>Run scrape now</em> above.
