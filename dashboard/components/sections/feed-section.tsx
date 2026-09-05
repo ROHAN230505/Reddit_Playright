@@ -42,7 +42,7 @@ export default function FeedSection() {
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Subreddit Feed</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Posts, comments, pagination, and filters for the selected subreddit.
           </p>
         </div>
@@ -109,7 +109,7 @@ function PostCard({ post }: { post: ContentPost }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold">{post.title}</h3>
-          <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted">
+          <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>{post.upvotes} upvotes</span>
             <span>{post.number_of_comments} comments</span>
             <span>{formatDate(post.created_at)}</span>
@@ -133,7 +133,7 @@ function PostCard({ post }: { post: ContentPost }) {
             key={comment.id}
             className="rounded-md border-l-4 border-teal-600 bg-muted p-3 text-sm"
           >
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{comment.upvotes} upvotes</span>
               <span>{comment.author || "unknown"}</span>
               <span>{formatDate(comment.created_at)}</span>

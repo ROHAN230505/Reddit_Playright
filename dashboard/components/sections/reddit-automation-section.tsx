@@ -140,7 +140,7 @@ export default function RedditAutomationSection() {
                 value={`${summary.auto_approval_caps.normal_daily_cap} normal · ${summary.auto_approval_caps.promo_daily_cap} promo`}
               />
             </div>
-            <div className="mt-3 text-sm text-muted">
+            <div className="mt-3 text-sm text-muted-foreground">
               Per-subreddit cap: {summary.auto_approval_caps.per_subreddit_daily_cap}/day · minimum value: {summary.auto_approval_caps.normal_min_value} normal, {summary.auto_approval_caps.promo_min_value} promo
             </div>
             {summary.current_state.state === "idle_empty_queue" && summary.auto_approved_today === 0 && (
@@ -204,7 +204,7 @@ export default function RedditAutomationSection() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">u/{account.username}</div>
-                        <div className="mt-1 text-xs text-muted">
+                        <div className="mt-1 text-xs text-muted-foreground">
                           Slot {account.profile_index ?? "?"} · {account.proxy_label || "no proxy"} · {account.has_cookies ? "cookies saved" : "no cookies"}
                         </div>
                       </div>
@@ -217,7 +217,7 @@ export default function RedditAutomationSection() {
                         </Badge>
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-2 text-sm text-muted">
+                    <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
                       <div className="flex justify-between gap-3">
                         <span>Last hour</span>
                         <span className="font-medium text-foreground">
@@ -245,7 +245,7 @@ export default function RedditAutomationSection() {
                     </div>
                     {account.readiness_reasons.length > 0 && (
                       <div className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">
-                        <div className="mb-1 font-semibold uppercase text-muted">Readiness</div>
+                        <div className="mb-1 font-semibold uppercase text-muted-foreground">Readiness</div>
                         <ul className="space-y-1">
                           {account.readiness_reasons.slice(0, 3).map((reason) => (
                             <li key={reason} className="break-words">{reason}</li>
@@ -298,7 +298,7 @@ function AutomationHealthBanner({ summary }: { summary: RedditAutomationSummary 
           <p className="mt-1 text-sm text-muted-foreground">{state.detail}</p>
           {state.blockers.length > 0 && (
             <div className="mt-3 rounded-md border border-border bg-card/70 p-3">
-              <div className="text-xs font-semibold uppercase text-muted">Why it is not posting</div>
+              <div className="text-xs font-semibold uppercase text-muted-foreground">Why it is not posting</div>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                 {state.blockers.map((blocker) => (
                   <li key={blocker} className="break-words">{blocker}</li>
@@ -321,7 +321,7 @@ function AutomationHealthBanner({ summary }: { summary: RedditAutomationSummary 
 function StatusFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-card/70 p-3">
-      <div className="text-xs font-semibold uppercase text-muted">{label}</div>
+      <div className="text-xs font-semibold uppercase text-muted-foreground">{label}</div>
       <div className="mt-1 truncate font-medium text-foreground">{value}</div>
     </div>
   );
@@ -365,9 +365,9 @@ function readinessBadgeClass(status: string) {
 function MetricCard({ label, value, hint }: { label: string; value: number | string; hint: string }) {
   return (
     <Card className="p-4">
-      <div className="text-xs font-semibold uppercase text-muted">{label}</div>
+      <div className="text-xs font-semibold uppercase text-muted-foreground">{label}</div>
       <div className="mt-3 text-3xl font-semibold tracking-tight">{value}</div>
-      <div className="mt-2 text-sm text-muted">{hint}</div>
+      <div className="mt-2 text-sm text-muted-foreground">{hint}</div>
     </Card>
   );
 }
@@ -400,7 +400,7 @@ function QueueTable({ items }: { items: RedditAutomationSummary["approved_queue"
           <tr key={item.reply_id} className={tableRowClassName}>
             <td className={tableCellClassName}>
               <div className="font-medium">#{item.reply_id}</div>
-              <div className="mt-1 max-w-lg text-xs text-muted">{item.reply_text_preview}</div>
+              <div className="mt-1 max-w-lg text-xs text-muted-foreground">{item.reply_text_preview}</div>
             </td>
             <td className={tableCellClassName}>{item.subreddit ? `r/${item.subreddit}` : "n/a"}</td>
             <td className={tableCellClassName}>
@@ -453,7 +453,7 @@ function AutomationTable({
           <tr key={item.reply_id} className={tableRowClassName}>
             <td className={tableCellClassName}>
               <div className="font-medium">#{item.reply_id}</div>
-              <div className="mt-1 max-w-md text-xs text-muted">{item.reply_text_preview}</div>
+              <div className="mt-1 max-w-md text-xs text-muted-foreground">{item.reply_text_preview}</div>
             </td>
             <td className={tableCellClassName}>{item.subreddit ? `r/${item.subreddit}` : "n/a"}</td>
             <td className={tableCellClassName}>{item.account_username ? `u/${item.account_username}` : "n/a"}</td>
@@ -488,7 +488,7 @@ function RatioRow({ label, value, total }: { label: string; value: number; total
     <div>
       <div className="mb-2 flex items-center justify-between gap-3 text-sm">
         <span className="truncate font-medium">{label}</span>
-        <span className="text-muted">{value}</span>
+        <span className="text-muted-foreground">{value}</span>
       </div>
       <div className="h-2 rounded-full bg-muted">
         <div className="h-2 rounded-full bg-orange-500" style={{ width: `${width}%` }} />

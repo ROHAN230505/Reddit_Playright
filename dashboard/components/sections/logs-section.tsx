@@ -49,7 +49,7 @@ export default function LogsSection() {
         <div className="mt-3 grid gap-3 sm:grid-cols-4">
           {["APPROVED", "POSTING", "POSTED", "FAILED"].map((status) => (
             <div key={status} className="rounded-md border border-border bg-card p-3">
-              <div className="text-xs font-semibold text-muted">{status}</div>
+              <div className="text-xs font-semibold text-muted-foreground">{status}</div>
               <div className="mt-1 text-2xl font-semibold">{workerCounts[status] || 0}</div>
             </div>
           ))}
@@ -58,7 +58,7 @@ export default function LogsSection() {
       <Card className="overflow-hidden">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Live Scrape Logs</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Polling recent scrape run records, status, counts, and errors.
           </p>
         </div>
