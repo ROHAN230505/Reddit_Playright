@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -28,34 +31,44 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm p-6">
-        <h1 className="text-xl font-semibold">Dashboard Login</h1>
-        <p className="mt-1 text-sm text-muted">Sign in to Reddit Reply Ops.</p>
-        <form className="mt-5 space-y-3" onSubmit={submit} autoComplete="off">
-          <Input
-            id="dashboard-username"
-            name="dashboard-username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="Username"
-            autoComplete="off"
-            suppressHydrationWarning
-          />
-          <Input
-            id="dashboard-password"
-            name="dashboard-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Password"
-            type="password"
-            autoComplete="new-password"
-            suppressHydrationWarning
-          />
-          {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>}
-          <Button className="w-full" disabled={busy || !username || !password}>
-            {busy ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Dashboard Login</CardTitle>
+          <CardDescription>Sign in to Reddit Reply Ops.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={submit} autoComplete="off">
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-username">Username</Label>
+              <Input
+                id="dashboard-username"
+                name="dashboard-username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="Username"
+                autoComplete="off"
+                suppressHydrationWarning
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-password">Password</Label>
+              <Input
+                id="dashboard-password"
+                name="dashboard-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Password"
+                type="password"
+                autoComplete="new-password"
+                suppressHydrationWarning
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button className="w-full" disabled={busy || !username || !password}>
+              {busy ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </main>
   );

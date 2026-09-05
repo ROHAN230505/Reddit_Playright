@@ -11,20 +11,20 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState, Pagination } from "@/components/sections/shared";
 
 export default function LogsSection() {
   const [selectedSubreddit] = useSelectedSubreddit();
   const [scrapeRuns, setScrapeRuns] = useState<ScrapeRunList | null>(null);
-  const [summary, setSummary] = useState<{ worker_counts: Record<string, number> } | null>(null);
+  const [summary, setSummary] = useState<{ counts: Record<string, number> } | null>(null);
   const [page, setPage] = useState(1);
 
   async function load() {
     const [runs, sum] = await Promise.all([
       api.scrapeRuns(page, 8, selectedSubreddit || undefined),
-      api.summary(),
+      api.workerQueue("reddit"),
     ]);
     setScrapeRuns(runs);
     setSummary(sum);
@@ -39,7 +39,7 @@ export default function LogsSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedSubreddit]);
 
-  const workerCounts = summary?.worker_counts || {};
+  const workerCounts = summary?.counts || {};
   const totalPages = Math.max(1, Math.ceil((scrapeRuns?.total_runs || 0) / (scrapeRuns?.page_size || 8)));
 
   return (
@@ -48,8 +48,8 @@ export default function LogsSection() {
         <SectionHeader title="Worker Status" description="Current posting queue counts by state." />
         <div className="mt-3 grid gap-3 sm:grid-cols-4">
           {["APPROVED", "POSTING", "POSTED", "FAILED"].map((status) => (
-            <div key={status} className="rounded-md border border-border bg-white p-3">
-              <div className="text-xs font-semibold text-muted">{status}</div>
+            <div key={status} className="rounded-md border border-border bg-card p-3">
+              <div className="text-xs font-semibold text-muted-foreground">{status}</div>
               <div className="mt-1 text-2xl font-semibold">{workerCounts[status] || 0}</div>
             </div>
           ))}
@@ -58,7 +58,7 @@ export default function LogsSection() {
       <Card className="overflow-hidden">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Live Scrape Logs</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Polling recent scrape run records, status, counts, and errors.
           </p>
         </div>

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { api, type ScrapeRun, type SubredditHealthItem, type TrackedSubreddit } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Badge,
-  Button,
   Card,
   Input,
   SectionHeader,
@@ -14,7 +14,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 import { useNotice } from "@/lib/notice-context";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState } from "@/components/sections/shared";
@@ -50,6 +50,9 @@ export default function SubredditSection() {
 
   const filteredSubreddits = subreddits.filter((item) =>
     item.name.toLowerCase().includes(query.toLowerCase()),
+  );
+  const healthByName = Object.fromEntries(
+    healthRows.map((row) => [row.subreddit.toLowerCase(), row]),
   );
 
   return (
@@ -90,7 +93,6 @@ export default function SubredditSection() {
               onChange={(event) => setScrapeLimit(Number(event.target.value))}
             />
             <Button
-              variant="accent"
               onClick={() =>
                 runAction(async () => {
                   await api.scrapeAll(scrapeLimit);
@@ -103,7 +105,7 @@ export default function SubredditSection() {
             </Button>
           </div>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={() =>
               selectedSubreddit &&
               runAction(async () => {
@@ -115,6 +117,22 @@ export default function SubredditSection() {
           >
             Scrape Selected
           </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              runAction(async () => {
+                const result = await api.syncTrackedFromBrands();
+                await load();
+                return result.added.length
+                  ? `Added ${result.added.join(", ")}`
+                  : "Tracked list already matches enabled brands";
+              }, "Synced tracked subreddits from brands")
+            }
+            disabled={busy}
+            title="Add any subreddits owned by enabled brands that are not tracked yet"
+          >
+            Sync from brands
+          </Button>
         </div>
       </Card>
 
@@ -122,7 +140,7 @@ export default function SubredditSection() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold">Saved Subreddits</h2>
           <div className="relative w-full sm:w-72">
-            <span className="absolute left-3 top-3 text-xs font-bold text-muted">S</span>
+            <span className="absolute left-3 top-3 text-xs font-bold text-muted-foreground">S</span>
             <Input
               className="pl-9"
               value={query}
@@ -142,13 +160,23 @@ export default function SubredditSection() {
                 key={item.id}
                 className={`flex items-center justify-between gap-2 rounded-md border p-3 ${
                   selectedSubreddit === item.name
-                    ? "border-slate-900 bg-slate-50"
-                    : "border-border bg-white"
+                    ? "border-primary bg-muted"
+                    : "border-border bg-card"
                 }`}
               >
                 <button className="min-w-0 text-left" onClick={() => setSelectedSubreddit(item.name)}>
                   <div className="truncate font-medium">r/{item.name}</div>
-                  <div className="text-xs text-muted">Added {formatDate(item.created_at)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {item.brand_name ? item.brand_name : "default"}
+                    {(() => {
+                      const health = healthByName[item.name.toLowerCase()];
+                      if (!health) return ` · Added ${formatDate(item.created_at)}`;
+                      const scrape = health.latest_scrape_status
+                        ? ` · ${health.latest_scrape_status.toLowerCase()}`
+                        : "";
+                      return ` · ${health.pending_replies} pending${scrape}`;
+                    })()}
+                  </div>
                 </button>
                 <Button
                   variant="ghost"
@@ -176,23 +204,31 @@ export default function SubredditSection() {
         <RecentRuns runs={scrapeRuns} />
       </Card>
 
-      <SubredditHealthTable rows={healthRows} onSelect={setSelectedSubreddit} />
+      <SubredditHealthTable
+        rows={healthRows}
+        owners={Object.fromEntries(
+          subreddits.map((item) => [item.name.toLowerCase(), item.brand_name || "default"]),
+        )}
+        onSelect={setSelectedSubreddit}
+      />
     </div>
   );
 }
 
 function SubredditHealthTable({
   rows,
+  owners,
   onSelect,
 }: {
   rows: SubredditHealthItem[];
+  owners: Record<string, string>;
   onSelect: (name: string) => void;
 }) {
   return (
     <Card className="overflow-hidden xl:col-span-2">
       <div className="border-b border-border p-4">
         <h2 className="text-lg font-semibold">Subreddit Health</h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Operational view of scrape freshness, content volume, reply load, and errors.
         </p>
       </div>
@@ -201,10 +237,11 @@ function SubredditHealthTable({
           <thead className={tableHeadClassName}>
             <tr>
               <th className={tableCellClassName}>Subreddit</th>
+              <th className={tableCellClassName}>Brand</th>
               <th className={tableCellClassName}>Posts</th>
               <th className={tableCellClassName}>Comments</th>
               <th className={tableCellClassName}>Pending</th>
-              <th className={tableCellClassName}>Done</th>
+              <th className={tableCellClassName}>Posted</th>
               <th className={tableCellClassName}>Promo</th>
               <th className={tableCellClassName}>Last scrape</th>
               <th className={tableCellClassName}>Errors</th>
@@ -214,9 +251,12 @@ function SubredditHealthTable({
             {rows.map((row) => (
               <tr key={row.subreddit} className={tableRowClassName}>
                 <td className={tableCellClassName}>
-                  <button className="font-medium text-accent" onClick={() => onSelect(row.subreddit)}>
+                  <button className="font-medium text-primary" onClick={() => onSelect(row.subreddit)}>
                     r/{row.subreddit}
                   </button>
+                </td>
+                <td className={tableCellClassName}>
+                  {owners[row.subreddit.toLowerCase()] || "default"}
                 </td>
                 <td className={tableCellClassName}>{row.total_posts}</td>
                 <td className={tableCellClassName}>{row.total_comments}</td>
@@ -226,10 +266,10 @@ function SubredditHealthTable({
                 <td className={tableCellClassName}>
                   <div>{formatDate(row.latest_scrape_time)}</div>
                   {row.latest_scrape_status && (
-                    <div className="text-xs text-muted">{row.latest_scrape_status}</div>
+                    <div className="text-xs text-muted-foreground">{row.latest_scrape_status}</div>
                   )}
                 </td>
-                <td className={`${tableCellClassName} ${row.error_count ? "text-danger" : ""}`}>
+                <td className={`${tableCellClassName} ${row.error_count ? "text-destructive" : ""}`}>
                   {row.error_count}
                 </td>
               </tr>
@@ -252,19 +292,19 @@ function SubredditHealthTable({
 function RecentRuns({ runs }: { runs: ScrapeRun[] }) {
   return (
     <div className="mt-5">
-      <h3 className="mb-2 text-sm font-semibold uppercase text-muted">Recent scrape status</h3>
+      <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Recent scrape status</h3>
       <div className="space-y-2">
         {runs.slice(0, 4).map((run) => (
-          <div key={run.id} className="rounded-md border border-border bg-slate-50 p-3 text-sm">
+          <div key={run.id} className="rounded-md border border-border bg-muted p-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">r/{run.subreddit}</span>
               <Badge>{run.status}</Badge>
             </div>
-            <div className="mt-1 text-xs text-muted">
+            <div className="mt-1 text-xs text-muted-foreground">
               {run.posts_count} posts - {run.comments_count} comments - {formatDate(run.created_at)}
             </div>
             {run.error_message && (
-              <div className="mt-2 text-xs text-danger">{run.error_message}</div>
+              <div className="mt-2 text-xs text-destructive">{run.error_message}</div>
             )}
           </div>
         ))}

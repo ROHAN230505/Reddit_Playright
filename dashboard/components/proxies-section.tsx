@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type ProxyItem } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Badge,
-  Button,
   Card,
   Input,
   SectionHeader,
@@ -16,7 +16,7 @@ import {
   tableCellClassName,
   tableHeadClassName,
   tableRowClassName,
-} from "@/components/ui";
+} from "@/components/legacy-ui";
 
 function relativeTime(value: string | null): string {
   if (!value) return "n/a";
@@ -28,9 +28,9 @@ function relativeTime(value: string | null): string {
 }
 
 function statusBadge(status: ProxyItem["status"]) {
-  if (status === "ACTIVE") return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200">ACTIVE</Badge>;
-  if (status === "FAILED") return <Badge className="bg-rose-500/15 text-rose-700 border-rose-200">FAILED</Badge>;
-  return <Badge className="bg-zinc-500/15 text-zinc-600 border-zinc-200">DISABLED</Badge>;
+  if (status === "ACTIVE") return <Badge className="border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">ACTIVE</Badge>;
+  if (status === "FAILED") return <Badge className="border-rose-500/20 bg-rose-500/15 text-rose-600 dark:text-rose-400">FAILED</Badge>;
+  return <Badge className="border-border bg-muted text-muted-foreground">DISABLED</Badge>;
 }
 
 type FormState = {
@@ -206,8 +206,8 @@ export default function ProxiesSection() {
             key={n.id}
             className={`rounded-md border px-4 py-3 text-sm shadow-soft ${
               n.type === "success"
-                ? "border-teal-200 bg-teal-50 text-accent"
-                : "border-red-200 bg-red-50 text-danger"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "border-destructive/30 bg-destructive/10 text-destructive"
             }`}
           >
             {n.text}
@@ -223,15 +223,15 @@ export default function ProxiesSection() {
 
       {formOpen && (
         <Card className="p-4">
-          <h3 className="mb-4 font-semibold">{editId !== null ? "Edit proxy" : "Add proxy"}</h3>
+          <h3 className="mb-4 font-semibold text-foreground">{editId !== null ? "Edit proxy" : "Add proxy"}</h3>
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Label *</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Label *</label>
                 <Input value={form.label} onChange={(e) => set("label", e.target.value)} required placeholder="residential-1" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Scheme</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Scheme</label>
                 <Select value={form.scheme} onChange={(e) => set("scheme", e.target.value as FormState["scheme"])}>
                   <option value="http">http</option>
                   <option value="https">https</option>
@@ -239,38 +239,38 @@ export default function ProxiesSection() {
                 </Select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Host *</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Host *</label>
                 <Input value={form.host} onChange={(e) => set("host", e.target.value)} required placeholder="1.2.3.4" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Port *</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Port *</label>
                 <Input type="number" min={1} max={65535} value={form.port} onChange={(e) => set("port", e.target.value)} required />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Username (optional)</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Username (optional)</label>
                 <Input value={form.username} onChange={(e) => set("username", e.target.value)} placeholder="proxyuser" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-muted">Password (optional)</label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Password (optional)</label>
                 <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder={editId !== null ? "leave blank to keep" : ""} />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase text-muted">Notes (optional)</label>
+              <label className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">Notes (optional)</label>
               <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. US residential, provider XYZ" className="min-h-16" />
             </div>
             {editId === null && (
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={form.skip_validation} onChange={(e) => set("skip_validation", e.target.checked)} />
                 Skip live validation (save with status DISABLED until manually validated)
               </label>
             )}
             {formError && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">{formError}</div>
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</div>
             )}
             <div className="flex gap-2">
               <Button type="submit" disabled={submitting}>{submitting ? "Saving…" : "Save"}</Button>
-              <Button type="button" variant="secondary" onClick={closeForm}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
             </div>
           </form>
         </Card>
@@ -311,23 +311,23 @@ export default function ProxiesSection() {
                     <td className={tableCellClassName}>
                       <div>{relativeTime(proxy.last_checked_at)}</div>
                       {proxy.last_check_error && (
-                        <div className="mt-0.5 max-w-xs truncate text-xs text-danger" title={proxy.last_check_error}>
+                        <div className="mt-0.5 max-w-xs truncate text-xs text-destructive" title={proxy.last_check_error}>
                           {proxy.last_check_error}
                         </div>
                       )}
                     </td>
                     <td className={tableCellClassName}>
                       <div className="flex flex-wrap gap-1">
-                        <Button size="sm" variant="secondary" onClick={() => handleValidate(proxy.id)}>
+                        <Button size="sm" variant="outline" onClick={() => handleValidate(proxy.id)}>
                           Validate
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => openEdit(proxy)}>
+                        <Button size="sm" variant="outline" onClick={() => openEdit(proxy)}>
                           Edit
                         </Button>
                         <span title={proxy.account_count > 0 ? `Cannot delete — ${proxy.account_count} account(s) still assigned` : ""}>
                           <Button
                             size="sm"
-                            variant="danger"
+                            variant="destructive"
                             disabled={proxy.account_count > 0}
                             onClick={() => handleDelete(proxy)}
                           >
@@ -343,7 +343,7 @@ export default function ProxiesSection() {
         )}
       </Card>
 
-      <div className="text-xs text-muted">
+      <div className="text-xs text-muted-foreground">
         Auto-refreshes every 5 seconds. Last checked: {formatDate(new Date().toISOString())}
       </div>
     </div>

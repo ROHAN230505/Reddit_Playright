@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type ContentPost, type SubredditContent, type TrackedSubreddit } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { Card, Input, Select } from "@/components/ui";
+import { Card, Input, Select } from "@/components/legacy-ui";
 import { useSelectedSubreddit } from "@/lib/hooks/use-selected-subreddit";
 import { EmptyState, Pagination } from "@/components/sections/shared";
 
@@ -42,7 +42,7 @@ export default function FeedSection() {
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Subreddit Feed</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Posts, comments, pagination, and filters for the selected subreddit.
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function FeedSection() {
             onChange={(event) => setRelevance(event.target.value as RelevanceFilter)}
           >
             <option value="all">All relevance</option>
-            <option value="promo">sentx.ai promo</option>
+            <option value="promo">Promo</option>
             <option value="normal">Normal</option>
           </Select>
           <Input
@@ -105,11 +105,11 @@ export default function FeedSection() {
 
 function PostCard({ post }: { post: ContentPost }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold">{post.title}</h3>
-          <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted">
+          <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>{post.upvotes} upvotes</span>
             <span>{post.number_of_comments} comments</span>
             <span>{formatDate(post.created_at)}</span>
@@ -125,15 +125,15 @@ function PostCard({ post }: { post: ContentPost }) {
         </a>
       </div>
       {post.body && (
-        <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-700">{post.body}</p>
+        <p className="mt-3 line-clamp-4 text-sm leading-6 text-foreground">{post.body}</p>
       )}
       <div className="mt-4 space-y-2">
         {post.top_comments.map((comment) => (
           <div
             key={comment.id}
-            className="rounded-md border-l-4 border-teal-600 bg-slate-50 p-3 text-sm"
+            className="rounded-md border-l-4 border-teal-600 bg-muted p-3 text-sm"
           >
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{comment.upvotes} upvotes</span>
               <span>{comment.author || "unknown"}</span>
               <span>{formatDate(comment.created_at)}</span>
