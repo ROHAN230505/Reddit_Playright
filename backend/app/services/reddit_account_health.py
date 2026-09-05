@@ -146,12 +146,18 @@ def _json_profile_state(payload: Any) -> str | None:
 
 def _fetch(getter: HttpGet, url: str, *, cookies: dict | None, proxy_url: str | None):
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    headers = dict(DEFAULT_HEADERS)
+    if "about.json" in url:
+        headers["Accept"] = "application/json"
+    timeout = CHECK_TIMEOUT_SECONDS
+    if proxy_url and "proxy.apify.com" in proxy_url:
+        timeout = 15
     return getter(
         url,
         cookies=cookies or None,
         proxies=proxies,
-        headers=DEFAULT_HEADERS,
-        timeout=CHECK_TIMEOUT_SECONDS,
+        headers=headers,
+        timeout=timeout,
     )
 
 
@@ -194,14 +200,23 @@ def check_reddit_account(
     cookie_header: dict[str, str] | None,
     proxy_url: str | None,
     http_get: HttpGet | None = None,
+    public_proxy_url: str | None = None,
 ) -> HealthResult:
     getter = http_get or _default_get
     safe = quote(username, safe="")
     profile_urls = (
-        f"https://old.reddit.com/user/{safe}/",
+        f"https://old.reddit.com/user/{safe}/about.json",
         f"https://www.reddit.com/user/{safe}/about.json",
+        f"https://old.reddit.com/user/{safe}/",
         f"https://www.reddit.com/user/{safe}/",
     )
+    if public_proxy_url is None:
+        try:
+            from app.services.apify_service import residential_proxy_url
+
+            public_proxy_url = residential_proxy_url()
+        except Exception:  # noqa: BLE001
+            public_proxy_url = None
 
     profile_state = "error"
     profile_detail = "Public profile was not fetched"
@@ -232,12 +247,14 @@ def check_reddit_account(
                 return True
         if not seen:
             return False
+        # Prefer a live about.json over a 404 from another host (old.reddit
+        # often returns plain "Not Found" while www still has the user).
         for state, detail in seen:
-            if state == "missing":
+            if state == "ok":
                 profile_state, profile_detail = state, detail
                 return True
         for state, detail in seen:
-            if state == "ok":
+            if state == "missing":
                 profile_state, profile_detail = state, detail
                 return True
         profile_state, profile_detail = seen[-1]
@@ -255,6 +272,23 @@ def check_reddit_account(
         # a direct fetch so the panel can show BANNED vs PROXY_DEAD.
         try:
             classified = _try_urls(None)
+        except Exception as exc:  # noqa: BLE001
+            last_exc = str(exc)
+
+    if (
+        not classified
+        and public_proxy_url
+        and public_proxy_url != proxy_url
+    ):
+        # Account proxies and this VPS get Reddit's logged-out 403 wall.
+        # Apify residential is the same network the scraper already uses.
+        try:
+            classified = _try_urls(public_proxy_url)
+            if classified:
+                logger.info(
+                    "reddit public profile u/%s classified via Apify residential",
+                    username,
+                )
         except Exception as exc:  # noqa: BLE001
             last_exc = str(exc)
 
