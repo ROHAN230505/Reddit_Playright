@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { type ReplySummary } from "@/lib/api";
-import { Card } from "@/components/legacy-ui";
+import { Card } from "@/components/ui/card";
 
 // Backend returns naive UTC datetimes (no tz suffix). Force UTC so the
 // day-windowing is correct regardless of the viewer's timezone.
@@ -15,19 +15,27 @@ function parseServerUtc(value: string): number {
 
 const DAY_MS = 86_400_000;
 
-export type GroupMode = "subreddit" | "board" | "forum";
+export type GroupMode = "subreddit" | "board" | "forum" | "persona";
 
-function groupName(reply: ReplySummary, mode: GroupMode): string {
+function groupName(
+  reply: ReplySummary,
+  mode: GroupMode,
+  groupNames?: Record<number, string>,
+): string {
   if (mode === "board") return `/${reply.platform_section ?? reply.subreddit ?? "board"}/`;
   if (mode === "forum") return `glp/${reply.platform_section ?? "forum"}`;
+  if (mode === "persona") {
+    if (reply.persona_id && groupNames?.[reply.persona_id]) return groupNames[reply.persona_id];
+    return reply.persona_id ? `persona ${reply.persona_id}` : "unassigned";
+  }
   return `r/${reply.subreddit || "unknown"}`;
 }
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{value}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{value}</div>
     </Card>
   );
 }
@@ -37,11 +45,13 @@ export function PostedAnalytics({
   groupLabel,
   groupMode,
   barClass,
+  groupNames,
 }: {
   posted: ReplySummary[];
   groupLabel: string;
   groupMode: GroupMode;
   barClass: string;
+  groupNames?: Record<number, string>;
 }) {
   const a = useMemo(() => {
     const withTs = posted.filter((p) => p.posted_at).map((p) => parseServerUtc(p.posted_at!));
@@ -73,7 +83,7 @@ export function PostedAnalytics({
     const byGroup = new Map<string, number>();
     for (const p of posted) {
       if (!p.posted_at) continue;
-      const k = groupName(p, groupMode);
+      const k = groupName(p, groupMode, groupNames);
       byGroup.set(k, (byGroup.get(k) ?? 0) + 1);
     }
     const topGroups = [...byGroup.entries()]
@@ -82,7 +92,7 @@ export function PostedAnalytics({
       .slice(0, 8);
 
     return { total, today, last7, last30, promo, normal: total - promo, days, topGroups };
-  }, [posted, groupMode]);
+  }, [posted, groupMode, groupNames]);
 
   const dayMax = Math.max(1, ...a.days.map((d) => d.count));
   const groupMax = Math.max(1, ...a.topGroups.map((g) => g.count));
@@ -99,8 +109,8 @@ export function PostedAnalytics({
       </div>
 
       <Card className="p-5">
-        <h2 className="text-sm font-semibold text-slate-800">Posts per day</h2>
-        <p className="text-xs text-muted">Last 14 days</p>
+        <h2 className="text-sm font-semibold text-foreground">Posts per day</h2>
+        <p className="text-xs text-muted-foreground">Last 14 days</p>
         <div className="mt-4 flex h-32 items-end gap-1.5">
           {a.days.map((d, i) => (
             <div key={i} className="flex flex-1 flex-col items-center gap-1" title={`${d.full}: ${d.count} posted`}>
@@ -110,7 +120,7 @@ export function PostedAnalytics({
                   style={{ height: `${Math.round((d.count / dayMax) * 100)}%`, minHeight: d.count > 0 ? 4 : 0 }}
                 />
               </div>
-              <div className="text-[10px] text-muted">{d.label}</div>
+              <div className="text-[10px] text-muted-foreground">{d.label}</div>
             </div>
           ))}
         </div>
@@ -118,37 +128,37 @@ export function PostedAnalytics({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-sm font-semibold text-slate-800">{groupLabel}</h2>
-          <p className="text-xs text-muted">By posts placed</p>
+          <h2 className="text-sm font-semibold text-foreground">{groupLabel}</h2>
+          <p className="text-xs text-muted-foreground">By posts placed</p>
           <div className="mt-4 space-y-2">
-            {a.topGroups.length === 0 && <p className="text-xs text-muted">No posts yet.</p>}
+            {a.topGroups.length === 0 && <p className="text-xs text-muted-foreground">No posts yet.</p>}
             {a.topGroups.map((g) => (
               <div key={g.name} className="flex items-center gap-3 text-sm">
-                <span className="w-28 shrink-0 truncate font-mono text-xs text-slate-600" title={g.name}>
+                <span className="w-28 shrink-0 truncate font-mono text-xs text-muted-foreground" title={g.name}>
                   {g.name}
                 </span>
-                <div className="h-2.5 flex-1 rounded-full bg-slate-100">
+                <div className="h-2.5 flex-1 rounded-full bg-muted">
                   <div className={`h-2.5 rounded-full ${barClass}`} style={{ width: `${Math.round((g.count / groupMax) * 100)}%` }} />
                 </div>
-                <span className="w-8 shrink-0 text-right text-xs font-medium text-slate-700">{g.count}</span>
+                <span className="w-8 shrink-0 text-right text-xs font-medium text-foreground">{g.count}</span>
               </div>
             ))}
           </div>
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-sm font-semibold text-slate-800">Promo vs normal</h2>
-          <p className="text-xs text-muted">Share of posts including a sentx.ai mention</p>
-          <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-slate-100">
+          <h2 className="text-sm font-semibold text-foreground">Promo vs normal</h2>
+          <p className="text-xs text-muted-foreground">Share of posts that mention the brand</p>
+          <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-muted">
             <div className="h-3 bg-amber-500" style={{ width: `${promoPct}%` }} />
             <div className="h-3 bg-teal-500" style={{ width: `${100 - promoPct}%` }} />
           </div>
           <div className="mt-3 flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-foreground">
               <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
               Promo · {a.promo} ({promoPct}%)
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-foreground">
               <span className="h-2.5 w-2.5 rounded-sm bg-teal-500" />
               Normal · {a.normal}
             </span>

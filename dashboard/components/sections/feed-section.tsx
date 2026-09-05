@@ -65,7 +65,7 @@ export default function FeedSection() {
             onChange={(event) => setRelevance(event.target.value as RelevanceFilter)}
           >
             <option value="all">All relevance</option>
-            <option value="promo">sentx.ai promo</option>
+            <option value="promo">Promo</option>
             <option value="normal">Normal</option>
           </Select>
           <Input
@@ -105,7 +105,7 @@ export default function FeedSection() {
 
 function PostCard({ post }: { post: ContentPost }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-base font-semibold">{post.title}</h3>
@@ -125,13 +125,13 @@ function PostCard({ post }: { post: ContentPost }) {
         </a>
       </div>
       {post.body && (
-        <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-700">{post.body}</p>
+        <p className="mt-3 line-clamp-4 text-sm leading-6 text-foreground">{post.body}</p>
       )}
       <div className="mt-4 space-y-2">
         {post.top_comments.map((comment) => (
           <div
             key={comment.id}
-            className="rounded-md border-l-4 border-teal-600 bg-slate-50 p-3 text-sm"
+            className="rounded-md border-l-4 border-teal-600 bg-muted p-3 text-sm"
           >
             <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted">
               <span>{comment.upvotes} upvotes</span>
