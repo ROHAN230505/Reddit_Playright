@@ -1,12 +1,25 @@
 "use client";
 
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import ProxiesSection from "@/components/proxies-section";
-import { AccountTable } from "@/components/reddit/account-table";
-import BrandSection from "@/components/sections/brand-section";
-import SubredditSection from "@/components/sections/subreddits-section";
+import { Skeleton } from "@/components/ui/skeleton";
 import { activeTab, DashboardTabs, type DashboardTab } from "@/components/sections/dashboard-tabs";
+
+const tabFallback = <Skeleton className="h-64 rounded-xl" />;
+const ProxiesSection = dynamic(() => import("@/components/proxies-section"), {
+  loading: () => tabFallback,
+});
+const AccountTable = dynamic(
+  () => import("@/components/reddit/account-table").then((mod) => mod.AccountTable),
+  { loading: () => tabFallback },
+);
+const BrandSection = dynamic(() => import("@/components/sections/brand-section"), {
+  loading: () => tabFallback,
+});
+const SubredditSection = dynamic(() => import("@/components/sections/subreddits-section"), {
+  loading: () => tabFallback,
+});
 
 const TABS: DashboardTab[] = [
   {

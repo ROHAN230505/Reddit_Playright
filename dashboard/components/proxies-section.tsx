@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api, type ProxyItem } from "@/lib/api";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,10 +87,12 @@ export default function ProxiesSection() {
   }
 
   useEffect(() => {
-    load();
-    const timer = window.setInterval(load, 5000);
-    return () => window.clearInterval(timer);
+    void load();
   }, []);
+
+  useVisibleInterval(() => {
+    void load();
+  }, 30_000);
 
   function openAdd() {
     setEditId(null);

@@ -34,21 +34,11 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        openPalette();
-      }
-    }
     function onCommand() {
       openPalette();
     }
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("replyops:command", onCommand);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("replyops:command", onCommand);
-    };
+    return () => window.removeEventListener("replyops:command", onCommand);
   }, [openPalette]);
 
   if (!mounted) return null;
@@ -64,7 +54,7 @@ function CommandPaletteDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const { data } = useAccountsHealth(false);
+  const { data } = useAccountsHealth(false, open);
   const accounts = (data?.accounts ?? []).filter(
     (account) => (account.platform || "reddit") === "reddit",
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { type ReplySummary } from "@/lib/api";
+import { useVisibleInterval } from "@/lib/hooks/use-visible-interval";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -52,10 +53,7 @@ export function RecentlyPostedPanel({
   const [expanded, setExpanded] = useState(false);
   // Tick once a minute so "Xm ago" updates without a full reload.
   const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => window.clearInterval(t);
-  }, []);
+  useVisibleInterval(() => setTick((n) => n + 1), 60_000);
 
   const sorted = useMemo(() => {
     const items = [...posted].filter((r) => r.posted_at);

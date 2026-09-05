@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { api, type Platform, type ReplyItem } from "@/lib/api";
+import { api, type Platform, type ReplySummary } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -10,25 +10,27 @@ import { PLATFORMS } from "@/components/platforms";
 import { ArrowRightIcon } from "@/components/icons";
 import { RecentlyPostedPanel } from "@/components/recently-posted";
 import { queryKeys } from "@/lib/query-keys";
+import { visibleRefetchInterval } from "@/lib/query";
 
-const LIMIT = 200;
 const OVERVIEW_PLATFORMS = PLATFORMS.filter((item) => item.platform !== "instagram");
 
 export default function HomePage() {
   const pendingQueries = useQueries({
     queries: OVERVIEW_PLATFORMS.map((card) => ({
-      queryKey: queryKeys.replies("PENDING", { platform: card.platform, limit: LIMIT, order: "upvotes" }),
-      queryFn: () => api.replies("PENDING", LIMIT, undefined, "upvotes", 0, card.platform),
-      refetchInterval: 30_000,
-      placeholderData: (previous: ReplyItem[] | undefined) => previous,
+      queryKey: queryKeys.workerQueue(card.platform),
+      queryFn: () => api.workerQueue(card.platform),
+      refetchInterval: visibleRefetchInterval(30_000),
+      refetchIntervalInBackground: false,
+      placeholderData: (previous: { counts: Record<string, number> } | undefined) => previous,
     })),
   });
 
   const postedQuery = useQuery({
-    queryKey: queryKeys.replies("POSTED", { limit: 50, order: "newest" }),
-    queryFn: () => api.replies("POSTED", 50, undefined, "newest"),
-    refetchInterval: 30_000,
-    placeholderData: (previous: ReplyItem[] | undefined) => previous,
+    queryKey: queryKeys.repliesSummary("POSTED"),
+    queryFn: () => api.repliesSummary("POSTED", 50),
+    refetchInterval: visibleRefetchInterval(30_000),
+    refetchIntervalInBackground: false,
+    placeholderData: (previous: ReplySummary[] | undefined) => previous,
   });
 
   const pending: Partial<Record<Platform, number | null>> = {};
@@ -37,7 +39,7 @@ export default function HomePage() {
     if (!query || query.isError || (query.isPending && !query.data)) {
       pending[card.platform] = null;
     } else {
-      pending[card.platform] = query.data?.length ?? 0;
+      pending[card.platform] = query.data?.counts?.PENDING ?? 0;
     }
   });
 
@@ -48,7 +50,7 @@ export default function HomePage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {PLATFORMS.map((card) => {
         const count = pending[card.platform];
-        const display = card.platform === "instagram" ? "Open" : count == null ? null : count >= LIMIT ? `${LIMIT}+` : String(count);
+        const display = card.platform === "instagram" ? "Open" : count == null ? null : String(count);
         return (
           <Link key={card.href} href={card.href} className="group block">
             <Card className="flex h-full flex-col justify-between gap-6 p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lift">
