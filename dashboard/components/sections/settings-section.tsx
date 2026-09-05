@@ -2,8 +2,8 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import AccountsSection from "@/components/accounts-section";
 import ProxiesSection from "@/components/proxies-section";
+import { AccountTable } from "@/components/reddit/account-table";
 import SubredditSection from "@/components/sections/subreddits-section";
 import { activeTab, DashboardTabs, type DashboardTab } from "@/components/sections/dashboard-tabs";
 
@@ -37,7 +37,7 @@ export default function SettingsSection() {
           <SubredditSection />
         </Suspense>
       )}
-      {tab.key === "accounts" && <AccountsSection />}
+      {tab.key === "accounts" && <AccountTable />}
       {tab.key === "proxies" && <ProxiesSection />}
     </div>
   );
