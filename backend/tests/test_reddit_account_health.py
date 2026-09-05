@@ -239,6 +239,60 @@ def test_public_bot_wall_with_live_session_is_healthy():
     assert "403" in result.detail or "blocked" in result.detail.lower()
 
 
+def test_apify_public_about_json_classifies_healthy_when_account_proxy_is_403():
+    """Logged-out about.json through Apify residential is the public source of truth."""
+
+    def http_get(url, **kwargs):
+        proxies = kwargs.get("proxies") or {}
+        proxy = str(proxies.get("https") or proxies.get("http") or "")
+        if "/api/me.json" in url:
+            return FakeResp(200, json_data={"name": "Healthy_Concert7779", "is_suspended": False})
+        if "proxy.apify.com" in proxy and "about.json" in url:
+            return FakeResp(
+                200,
+                json_data={
+                    "kind": "t2",
+                    "data": {"name": "Healthy_Concert7779", "is_suspended": False},
+                },
+            )
+        return FakeResp(403, text="<html><title>Blocked</title>forbidden</html>")
+
+    result = check_reddit_account(
+        username="Healthy_Concert7779",
+        cookie_header={"reddit_session": "ok"},
+        proxy_url="http://user:pass@disp.oxylabs.io:8001",
+        http_get=http_get,
+        public_proxy_url="http://groups-RESIDENTIAL:token@proxy.apify.com:8000",
+    )
+    assert result.health == HEALTHY
+    assert result.session_alive is True
+    assert result.profile_banned is False
+
+
+def test_apify_public_about_json_suspended_is_banned():
+    def http_get(url, **kwargs):
+        proxies = kwargs.get("proxies") or {}
+        proxy = str(proxies.get("https") or proxies.get("http") or "")
+        if "/api/me.json" in url:
+            return FakeResp(200, json_data={"name": "destruct_noob", "is_suspended": False})
+        if "proxy.apify.com" in proxy and "about.json" in url:
+            return FakeResp(
+                200,
+                json_data={"kind": "t2", "data": {"name": "destruct_noob", "is_suspended": True}},
+            )
+        return FakeResp(403, text="<html><title>Blocked</title>forbidden</html>")
+
+    result = check_reddit_account(
+        username="destruct_noob",
+        cookie_header={"reddit_session": "ok"},
+        proxy_url="http://user:pass@disp.oxylabs.io:8001",
+        http_get=http_get,
+        public_proxy_url="http://groups-RESIDENTIAL:token@proxy.apify.com:8000",
+    )
+    assert result.health == BANNED
+    assert result.profile_banned is True
+
+
 def test_public_bot_wall_with_dead_session_is_session_dead():
     def http_get(url, **kwargs):
         if "/api/me.json" in url:
