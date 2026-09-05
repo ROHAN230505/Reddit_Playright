@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.reddit_public_profile import classify_public_profile_html
 from app.services.reddit_account_health import (
     BANNED,
     HEALTHY,
@@ -40,6 +41,65 @@ def _router(mapping, default=None):
         raise AssertionError(f"unexpected url {url}")
 
     return http_get
+
+
+def test_classify_public_html_ok_and_banned():
+    ok, detail = classify_public_profile_html(
+        "Healthy_Concert7779",
+        "<html><title>u/Healthy_Concert7779</title>overview for Healthy_Concert7779</html>",
+        "u/Healthy_Concert7779",
+    )
+    assert ok == "ok"
+    banned, _ = classify_public_profile_html(
+        "destruct_noob",
+        "<html>This account has been banned</html>",
+        "reddit.com",
+    )
+    assert banned == "banned"
+
+
+def test_browser_public_ok_marks_healthy_with_confirmed_profile():
+    def http_get(url, **kwargs):
+        if "/api/me.json" in url:
+            return FakeResp(200, json_data={"name": "Healthy_Concert7779"})
+        return FakeResp(403, text="<html><title>Blocked</title></html>")
+
+    result = check_reddit_account(
+        username="Healthy_Concert7779",
+        cookie_header={"reddit_session": "ok"},
+        proxy_url="http://user:pass@proxy.example:8000",
+        http_get=http_get,
+        use_browser=True,
+        browser_fetch=lambda username, proxy_url: (
+            "ok",
+            "Public profile page loaded in browser",
+        ),
+    )
+    assert result.health == HEALTHY
+    assert result.profile_banned is False
+    assert result.session_alive is True
+
+
+def test_browser_public_ban_marks_banned_even_if_session_alive():
+    def http_get(url, **kwargs):
+        if "/api/me.json" in url:
+            return FakeResp(200, json_data={"name": "destruct_noob"})
+        return FakeResp(403, text="<html><title>Blocked</title></html>")
+
+    result = check_reddit_account(
+        username="destruct_noob",
+        cookie_header={"reddit_session": "ok"},
+        proxy_url=None,
+        http_get=http_get,
+        use_browser=True,
+        browser_fetch=lambda username, proxy_url: (
+            "banned",
+            "Public profile: this account has been banned",
+        ),
+    )
+    assert result.health == BANNED
+    assert result.profile_banned is True
+    assert result.session_alive is True
 
 
 def test_banned_profile_beats_live_me_json():

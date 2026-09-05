@@ -205,6 +205,8 @@ def check_reddit_account(
     proxy_url: str | None,
     http_get: HttpGet | None = None,
     public_proxy_url: str | None = None,
+    use_browser: bool | None = None,
+    browser_fetch: Any | None = None,
 ) -> HealthResult:
     getter = http_get or _default_get
     safe = quote(username, safe="")
@@ -298,8 +300,27 @@ def check_reddit_account(
                     "reddit public profile u/%s classified via Apify residential",
                     username,
                 )
-        except Exception as exc:  # noqa: BLE001
-            last_exc = str(exc)
+        except Exception as extra:  # noqa: BLE001
+            last_exc = str(extra)
+
+    if use_browser is None:
+        use_browser = http_get is None
+    if not classified and use_browser:
+        fetch = browser_fetch
+        if fetch is None:
+            from app.services.reddit_public_profile import fetch_public_profile_browser
+
+            fetch = fetch_public_profile_browser
+        try:
+            browser_result = fetch(username, proxy_url or public_proxy_url)
+        except Exception as extra:  # noqa: BLE001
+            logger.exception("browser health fetch failed for u/%s", username)
+            browser_result = None
+        if browser_result:
+            state, detail = browser_result
+            profile_state, profile_detail = state, detail
+            if state in {"ok", "banned", "missing"}:
+                classified = True
 
     session_alive: bool | None = None
     session_detail = ""
@@ -529,6 +550,8 @@ def refresh_reddit_health(
     min_age_seconds: float = LIVE_TTL_SECONDS,
     force: bool = False,
     http_get: HttpGet | None = None,
+    use_browser: bool | None = None,
+    browser_fetch: Any | None = None,
 ) -> int:
     """Check stale Reddit accounts and write health onto the ORM rows.
 
@@ -559,7 +582,7 @@ def refresh_reddit_health(
         return 0
 
     results: dict[int, HealthResult] = {}
-    workers = min(MAX_PARALLEL, len(jobs))
+    workers = 1 if use_browser else min(MAX_PARALLEL, len(jobs))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futs = {
             pool.submit(
@@ -568,6 +591,8 @@ def refresh_reddit_health(
                 cookie_header=job["cookie_header"],
                 proxy_url=job["proxy_url"],
                 http_get=http_get,
+                use_browser=use_browser,
+                browser_fetch=browser_fetch,
             ): job
             for job in jobs
         }
